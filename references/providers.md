@@ -9,6 +9,12 @@ from predict_by_emh import (
     StooqProvider, PriceHistoryQuery,
     DeribitProvider, DeribitFuturesCurveQuery, DeribitOptionChainQuery,
     USTreasuryProvider, YieldCurveQuery, ExchangeRateQuery,
+    WebSearchProvider,
+    CftcCotProvider, CftcCotQuery,
+    CoinGeckoProvider, CoinGeckoPriceQuery, CoinGeckoMarketQuery,
+    EdgarProvider, EdgarInsiderQuery, EdgarSearchQuery,
+    BisProvider, BisRateQuery, BisCreditGapQuery,
+    WorldBankProvider, WorldBankQuery,
 )
 ```
 
@@ -145,3 +151,164 @@ rates = t.list_exchange_rates(ExchangeRateQuery(country=("China", "Japan")))
 # 返回 list[ExchangeRateRecord]
 # record.country, record.currency, record.exchange_rate
 ```
+
+## WebSearchProvider
+
+网页搜索 + 页面抓取。DuckDuckGo 搜索，零 API key。
+
+```python
+web = WebSearchProvider()
+
+# 搜索（返回摘要列表）
+result = web.search("VIX index current level")
+# 返回 WebSearchResult
+# result.snippets -> tuple[WebSearchSnippet, ...]
+# snippet.title, snippet.url, snippet.snippet
+# result.text() -> 渲染为可读文本块
+
+# 也可传 WebSearchQuery 控制结果数
+from predict_by_emh import WebSearchQuery
+result = web.search(WebSearchQuery(query="US high yield OAS spread", max_results=3))
+
+# 抓取页面正文
+page = web.fetch_page("https://example.com/article")
+# 返回 WebPageContent
+# page.title, page.text, page.truncated
+# 默认截断 8000 字符，可通过 WebPageQuery(url=..., max_chars=16000) 调整
+```
+
+## CftcCotProvider
+
+CFTC 持仓报告。机构期货仓位（smart money 方向）。
+
+```python
+cftc = CftcCotProvider()
+
+# 拉取最近 COT 报告
+reports = cftc.list_reports(CftcCotQuery(commodity_name="GOLD", limit=4))
+# 返回 list[CftcCotReport]
+# report.report_date, report.commodity, report.market_name
+# report.mm_long, report.mm_short, report.mm_spread  (Managed Money)
+# report.prod_long, report.prod_short                 (Producer/Merchant)
+# report.swap_long, report.swap_short, report.swap_spread (Swap Dealer)
+# report.open_interest
+# report.mm_net  -> mm_long - mm_short (净投机仓位)
+# report.prod_net -> prod_long - prod_short (净商业仓位)
+
+# 不传 commodity_name 则返回所有商品的最新报告
+reports = cftc.list_reports(CftcCotQuery(limit=20))
+```
+
+**常用 commodity_name：** `"GOLD"`, `"CRUDE OIL"`, `"NATURAL GAS"`, `"COPPER"`, `"S&P 500"`, `"WHEAT"`, `"CORN"`, `"SOYBEANS"`, `"EURO FX"`, `"JAPANESE YEN"`
+
+## CoinGeckoProvider
+
+加密货币现货数据。价格、市值、BTC dominance。
+
+```python
+cg = CoinGeckoProvider()
+
+# 获取价格
+prices = cg.get_prices(CoinGeckoPriceQuery(
+    coin_ids=("bitcoin", "ethereum", "solana"),
+    include_market_cap=True,
+    include_24h_vol=True,
+))
+# 返回 list[CoinGeckoPrice]
+# price.coin_id, price.price_usd, price.market_cap_usd
+# price.volume_24h_usd, price.price_change_24h_pct
+
+# 全球市场概览
+g = cg.get_global()
+# g.total_market_cap_usd, g.btc_dominance_pct, g.eth_dominance_pct
+# g.market_cap_change_24h_pct, g.active_cryptocurrencies
+
+# 市值排名列表
+markets = cg.list_markets(CoinGeckoMarketQuery(per_page=10, page=1))
+# 返回 list[CoinGeckoMarket]
+# m.coin_id, m.symbol, m.name, m.current_price, m.market_cap
+# m.market_cap_rank, m.total_volume, m.ath, m.atl
+```
+
+## EdgarProvider
+
+SEC EDGAR 公告检索 + 内部人交易（Form 4）。
+
+```python
+edgar = EdgarProvider()
+
+# 内部人交易（Form 4 减持/增持）
+summary = edgar.get_insider_transactions(EdgarInsiderQuery(ticker="NVDA", limit=20))
+# 返回 EdgarInsiderSummary
+# summary.ticker, summary.company_name, summary.cik
+# summary.total_form4_count
+# summary.recent_form4s -> tuple[EdgarFiling, ...]
+# filing.filing_date, filing.report_date, filing.accession_number
+
+# 全文检索 SEC 公告
+hits = edgar.search_filings(EdgarSearchQuery(
+    query="artificial intelligence risk",
+    forms="10-K",            # 可选：限定表格类型
+    date_start="2025-01-01", # 可选
+    date_end="2026-03-01",   # 可选
+    limit=10,
+))
+# 返回 list[EdgarSearchHit]
+# hit.entity_name, hit.file_date, hit.form_type, hit.description
+```
+
+## BisProvider
+
+国际清算银行。央行政策利率 + 信贷/GDP 缺口。
+
+```python
+bis = BisProvider()
+
+# 央行政策利率
+rates = bis.get_policy_rates(BisRateQuery(
+    countries=("US", "CN", "JP", "GB", "EU"),
+    start_year=2020,
+))
+# 返回 list[BisPolicyRate]
+# rate.country ("US"), rate.period ("2026-01"), rate.rate (5.5)
+
+# 信贷/GDP 缺口（信用泡沫指标）
+gaps = bis.get_credit_to_gdp(BisCreditGapQuery(
+    countries=("US", "CN"),
+    start_year=2015,
+))
+# 返回 list[BisCreditGap]
+# gap.country, gap.period ("2025-Q3"), gap.gap_pct
+# gap_pct > 10 = 信用过热警告（BIS 阈值）
+```
+
+**国家代码：** `"US"`, `"CN"`, `"JP"`, `"GB"`, `"EU"`, `"DE"`, `"KR"`, `"BR"`, `"IN"`, `"AU"`
+
+## WorldBankProvider
+
+世界银行。GDP、人口、贸易等发展指标。
+
+```python
+wb = WorldBankProvider()
+
+# 获取指标数据
+result = wb.get_indicator(WorldBankQuery(
+    indicator="NY.GDP.MKTP.CD",  # GDP (current US$)
+    countries=("US", "CN", "JP"),
+    date_range="2015:2025",
+    per_page=500,
+))
+# 返回 WorldBankResult
+# result.indicator_id, result.indicator_name
+# result.points -> tuple[WorldBankDataPoint, ...]
+# point.country_code, point.country_name, point.date, point.value
+# 注意：最新年份 value 可能为 None（数据尚未发布）
+```
+
+**常用指标 ID：**
+- `NY.GDP.MKTP.CD` — GDP (current US$)
+- `NY.GDP.MKTP.KD.ZG` — GDP growth (annual %)
+- `FP.CPI.TOTL.ZG` — Inflation, consumer prices (annual %)
+- `NE.TRD.GNFS.ZS` — Trade (% of GDP)
+- `BN.CAB.XOKA.CD` — Current account balance (BoP, current US$)
+- `SP.POP.TOTL` — Population, total

@@ -37,6 +37,8 @@ description: "Answer prediction questions using market trading data, not opinion
 - 避险资产: 黄金(xauusd)、白银(xagusd)、瑞郎(usdchf)
 - 冲突代理: 原油(cl.c)、天然气(ng.c)、小麦(zw.c)、防务ETF(ita.us)、防务个股
 - 风险比率: Copper/Gold ratio (risk-off指标)、Gold/Silver ratio
+- CFTC COT: 原油/黄金/小麦的机构持仓变化（smart money 在押注什么方向）
+- BIS: 相关国家央行政策利率变化趋势
 - Web search: VIX、MOVE index、主权CDS、战争险保费、BDI运价
 - 货币: 相关国家货币对（如 usdrub, usdcny）
 - 国家ETF: 相关国家资产流向（如 fxi.us, ewy.us）
@@ -45,7 +47,11 @@ description: "Answer prediction questions using market trading data, not opinion
 - Treasury: 收益率曲线形态（10Y-2Y利差、10Y-3M利差）、实际利率、盈亏平衡通胀
 - Stooq: SPY、铜(hg.c)、原油、BDI运价走势
 - 风险比率: Copper/Gold ratio
+- CFTC COT: 铜/原油的投机净仓位（managed money 看涨还是看跌）
+- BIS: 信贷/GDP 缺口（信用过热 = 周期尾声）、各国政策利率走向
+- World Bank: GDP 增长率历史趋势、横向国别对比
 - Deribit: BTC期货基差（risk appetite proxy）
+- CoinGecko: 加密总市值 + BTC dominance（风险偏好代理）
 - Polymarket: 衰退相关合约、央行利率路径
 - 货币: DXY/美元强弱、新兴市场货币
 - Web search: 高收益债利差(HY OAS)、TED spread、MOVE index
@@ -55,6 +61,9 @@ description: "Answer prediction questions using market trading data, not opinion
 - 找到该行业的"单一用途商品"（如GPU租赁价→AI、螺纹钢→建筑）
 - 上游设备商订单/股价（如ASML→半导体）
 - 龙头公司估值折价（如台积电 vs 同行 → 台海风险定价）
+- EDGAR: 行业龙头内部人买卖节奏（Form 4），集中减持 = 看空信号
+- CFTC COT: 相关商品的机构持仓变化
+- CoinGecko: 加密行业看 BTC/ETH/altcoin 市值分布
 - Web search: 风投融资集中度、杠杆ETF集中度
 - Deribit: 相关加密资产的期权隐含波动率
 
@@ -62,9 +71,12 @@ description: "Answer prediction questions using market trading data, not opinion
 - Stooq: 目标资产价格走势（日线/周线/月线）
 - 相关资产的相对价格变化（两种商品价差分化 = 结构性信号）
 - Treasury: 无风险利率作为估值锚
+- EDGAR: 内部人减持节奏（大量 Form 4 卖出 = 内部人看空）
+- CFTC COT: 商品类资产看投机/商业净仓位分歧
+- CoinGecko: 加密资产看市值、ATH/ATL 距离、24h 波动
 - Deribit: 期权链（隐含波动率 = 市场预期的波动范围）
 - Polymarket/Kalshi: 相关事件的概率定价
-- Web search: 内部人减持节奏、企业发债规模
+- Web search: 企业发债规模、分析师评级分布
 
 **详细的元信号参考：** 见 [references/signals.md](references/signals.md)
 **可用交易符号目录：** 见 [references/symbols.md](references/symbols.md)
@@ -82,6 +94,11 @@ from predict_by_emh import (
     DeribitProvider, DeribitFuturesCurveQuery,
     USTreasuryProvider, YieldCurveQuery,
     WebSearchProvider,
+    CftcCotProvider, CftcCotQuery,
+    CoinGeckoProvider, CoinGeckoPriceQuery,
+    EdgarProvider, EdgarInsiderQuery,
+    BisProvider, BisRateQuery,
+    WorldBankProvider, WorldBankQuery,
     gather,
 )
 
@@ -91,11 +108,26 @@ stooq = StooqProvider()
 deribit = DeribitProvider()
 treasury = USTreasuryProvider()
 web = WebSearchProvider()
+cftc = CftcCotProvider()
+coingecko = CoinGeckoProvider()
+edgar = EdgarProvider()
+bis = BisProvider()
+wb = WorldBankProvider()
 
 result = gather({
     "pm_events": lambda: pm.list_events(PolymarketEventQuery(slug_contains="...", limit=10)),
     "yield_curve": lambda: treasury.latest_yield_curve(),
     "gold": lambda: stooq.get_history(PriceHistoryQuery(symbol="xauusd", limit=30)),
+    # 机构持仓
+    "gold_cot": lambda: cftc.list_reports(CftcCotQuery(commodity_name="GOLD", limit=4)),
+    # 加密市场情绪
+    "crypto": lambda: coingecko.get_prices(CoinGeckoPriceQuery(coin_ids=("bitcoin", "ethereum"))),
+    # 内部人交易
+    "insider": lambda: edgar.get_insider_transactions(EdgarInsiderQuery(ticker="AAPL", limit=10)),
+    # 央行政策利率
+    "rates": lambda: bis.get_policy_rates(BisRateQuery(countries=("US", "CN"), start_year=2023)),
+    # GDP 数据
+    "gdp": lambda: wb.get_indicator(WorldBankQuery(indicator="NY.GDP.MKTP.CD", countries=("US", "CN"))),
     # web search 与结构化 provider 平行执行
     "vix": lambda: web.search("VIX index current level"),
     "hy_spread": lambda: web.search("US high yield bond spread OAS"),
@@ -105,6 +137,22 @@ result = gather({
 curve = result.get("yield_curve")
 vix_info = result.get_or("vix", None)  # WebSearchResult，用 .text() 渲染
 ```
+
+**所有 11 个 Provider（全部零 API key）：**
+
+| Provider | 数据类型 | 用途 |
+|----------|---------|------|
+| PolymarketProvider | 预测市场合约 | 事件概率定价 |
+| KalshiProvider | 二元合约 | 美国监管事件合约 |
+| StooqProvider | 价格历史 | 股票/ETF/外汇/商品 |
+| DeribitProvider | 加密衍生品 | 期货term structure、期权IV |
+| USTreasuryProvider | 国债收益率 | 利率曲线、通胀预期 |
+| WebSearchProvider | 网页搜索 | VIX/MOVE/CDS等补充数据 |
+| CftcCotProvider | 期货持仓 | 机构仓位方向（smart money） |
+| CoinGeckoProvider | 加密现货 | BTC/ETH价格、市值、dominance |
+| EdgarProvider | SEC文件 | 内部人交易Form 4、公告检索 |
+| BisProvider | 央行数据 | 政策利率、信贷/GDP缺口 |
+| WorldBankProvider | 发展指标 | GDP、人口、贸易等宏观数据 |
 
 **WebSearchProvider 用法：**
 - `web.search("query")` → 返回 `WebSearchResult`（搜索摘要），用 `.text()` 渲染为可读文本
@@ -179,3 +227,8 @@ vix_info = result.get_or("vix", None)  # WebSearchResult，用 .text() 渲染
 - Stooq 欧洲股票覆盖有限（Rheinmetall 拿不到），用 web search 补
 - 预测市场合约有流动性差异，交易量 < $100K 的合约可信度要打折
 - 不同信号的更新频率不同：预测市场实时，Stooq 日线延迟，Treasury 周级更新
+- CFTC COT 每周二更新、周五发布，commodity_name 用大写（"GOLD", "CRUDE OIL", "S&P 500"）
+- CoinGecko 免费 API 有频率限制（~10-30 req/min），不要在 gather 里塞太多 CoinGecko 调用
+- EDGAR 的 `get_insider_transactions` 需要先解析 ticker→CIK 映射，首次调用会稍慢
+- BIS 数据更新频率较低（月度/季度），适合判断长期趋势而非短期交易
+- World Bank GDP 数据通常滞后 1-2 年，最新年份可能返回 `None`
