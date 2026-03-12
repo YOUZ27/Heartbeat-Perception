@@ -19,7 +19,7 @@ In a sense, it's a digital oracle for the new era.
 ## What can it answer?
 
 - "What's the probability of WW3?"
-- "How long will China's housing slump last?"
+- "Will there be a US recession this year?"
 - "Is AI in a bubble?"
 - "Is now a good time to buy gold?"
 - "Has Bitcoin bottomed?"
