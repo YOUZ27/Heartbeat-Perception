@@ -39,7 +39,7 @@ clawhub install digital-oracle
 
 Just tell your agent:
 
-> Install this open-source project and read SKILL.md as your working instructions: https://github.com/Eyelids/digital-oracle
+> Install this open-source project and read SKILL.md as your working instructions: https://github.com/komako-workshop/digital-oracle
 
 The agent will clone the repo, read the methodology, and call the providers on its own.
 

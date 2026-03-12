@@ -39,7 +39,7 @@ clawhub install digital-oracle
 
 直接告诉你的 Agent：
 
-> 安装这个开源项目并读取 SKILL.md 作为你的工作指令：https://github.com/Eyelids/digital-oracle
+> 安装这个开源项目并读取 SKILL.md 作为你的工作指令：https://github.com/komako-workshop/digital-oracle
 
 Agent 会自行 clone 代码、阅读方法论、调用 provider。
 
