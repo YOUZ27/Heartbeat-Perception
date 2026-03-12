@@ -298,12 +298,19 @@ class _YFinanceFetcher:
         try:
             import yfinance  # type: ignore[import-untyped]
         except ImportError:
-            import subprocess, sys
+            import subprocess, sys, os
 
+            # Install to a local .deps directory to avoid polluting
+            # managed / externally-managed Python environments.
+            _deps = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir, ".deps"
+            )
+            os.makedirs(_deps, exist_ok=True)
             subprocess.check_call(
-                ["uv", "pip", "install", "yfinance"],
+                ["uv", "pip", "install", "--target", _deps, "yfinance"],
                 stdout=sys.stderr,
             )
+            sys.path.insert(0, _deps)
             import yfinance  # type: ignore[import-untyped]
 
         self._yf = yfinance

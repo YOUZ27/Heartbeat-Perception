@@ -85,6 +85,16 @@ class KalshiMarket:
             return None
         return (self.yes_bid + self.yes_ask) / 2.0
 
+    @property
+    def yes_probability(self) -> float | None:
+        """Probability estimate for the "yes" outcome.
+
+        Returns the midpoint of yes_bid/yes_ask when both are available,
+        otherwise falls back to last_price.  This keeps the API consistent
+        with PolymarketMarket.yes_probability.
+        """
+        return self.midpoint if self.midpoint is not None else self.last_price
+
 
 @dataclass
 class KalshiEvent:

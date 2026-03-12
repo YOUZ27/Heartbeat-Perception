@@ -2,3 +2,4 @@ __pycache__/
 *.py[cod]
 tmp_*.py
 .claude/
+.deps/

@@ -2,17 +2,21 @@
 
 # Digital Oracle 📈
 
-The core idea behind this project is **Predict by EMH (Efficient Market Hypothesis)** — use market price signals to reverse-engineer the probabilities and trajectories of macro-scale world events.
+Digital Oracle is an open-source Skill that lets AI Agents mine macro-event trends from massive financial data.
 
-We live in an era of extreme noise. Social media is flooded with emotional predictions — someone says housing is about to crash, someone says gold is going to the moon, someone says war breaks out tomorrow. These opinions chase crowd sentiment rather than rational analysis grounded in objective data. But trading data is different. Price is absolutely rational — when someone puts real money on an outcome, they think a lot harder than when they write a tweet.
+Works with OpenClaw / Claude Code / Cursor / Codex.
+
+We live in an era of extreme noise. Social media is flooded with emotional predictions — someone says housing is about to crash, someone says gold is going to the moon, someone says war breaks out tomorrow. These opinions chase crowd sentiment rather than rational analysis grounded in objective data.
+
+But trading data is different.
+
+Price is absolutely rational — when someone puts real money on an outcome, they think a lot harder than when they post a short video.
 
 This is the core insight of the Efficient Market Hypothesis: **all public information is already priced in. Everything is in the chart.**
 
-Embedded in price is market consensus — and behind that consensus are countless sharp minds with rational calculations, deep domain knowledge, and insider information.
+Digital Oracle turns this insight into an executable tool. It plugs into 12 authoritative financial data sources — **from prediction markets like Polymarket and Kalshi, to US Treasury yield curves, CFTC institutional positioning, SEC insider trades, central bank rates, and crypto derivatives.**
 
-Digital Oracle turns this insight into an executable tool. It plugs into 12 authoritative financial data sources — from prediction markets like Polymarket and Kalshi, to US Treasury yield curves, CFTC institutional positioning, SEC insider trades, central bank rates, and crypto derivatives — then lets an AI model cross-validate these signals to reverse-engineer macro trends from price.
-
-It's not a chatbot regurgitating news. It's an analytical system that reads consensus from global trading data — capable of answering questions about housing prices, gold trends, Bitcoin cycles, and military conflict probabilities, delivering structured probability estimates with full reasoning chains.
+It doesn't read newspapers, news articles, short videos, or podcasts. It answers questions about housing prices, gold trends, Bitcoin cycles, and military conflict probabilities purely through price signals mined from financial data — delivering structured probability estimates with full reasoning chains.
 
 In a sense, it's a digital oracle for the new era.
 
