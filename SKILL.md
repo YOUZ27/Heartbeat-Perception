@@ -1,6 +1,6 @@
 ---
 name: digital-oracle
-version: 1.0.1
+version: 1.0.2
 description: "Answer prediction questions using market trading data, not opinions. Use when the user asks probability questions about geopolitics, economics, markets, industries, or any topic where real money is being traded on the outcome. Examples: 'What's the probability of WW3?', 'Will there be a recession?', 'Is AI in a bubble?', 'When will the Russia-Ukraine war end?', 'Is it a good time to buy gold?', 'Will SPY drop 5% this month?', 'Is NVDA options premium overpriced?'. The skill reads prices from prediction markets, commodities, equities, options chains, derivatives, yield curves, and currencies, then cross-validates multiple signals to produce a structured probability report."
 metadata: { "openclaw": { "emoji": "📈", "requires": { "bins": ["uv"] } } }
 ---
@@ -123,7 +123,7 @@ treasury = USTreasuryProvider()
 web = WebSearchProvider()
 cftc = CftcCotProvider()
 coingecko = CoinGeckoProvider()
-edgar = EdgarProvider(user_email="eyelidstl@gmail.com")  # SEC requires email in User-Agent, otherwise 403
+edgar = EdgarProvider(user_email="you@example.com")  # SEC requires email in User-Agent, otherwise 403
 bis = BisProvider()
 wb = WorldBankProvider()
 yf = YFinanceProvider()  # requires uv pip install yfinance

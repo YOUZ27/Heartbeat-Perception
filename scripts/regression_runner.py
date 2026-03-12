@@ -6,6 +6,7 @@ Usage: python3 scripts/regression_runner.py <test_number>
 from __future__ import annotations
 
 import json
+import os
 import sys
 import traceback
 from pathlib import Path
@@ -39,7 +40,7 @@ cftc = CftcCotProvider()
 coingecko = CoinGeckoProvider()
 bis = BisProvider()
 wb = WorldBankProvider()
-edgar = EdgarProvider(user_email="eyelidstl@gmail.com")
+edgar = EdgarProvider(user_email=os.environ.get("EDGAR_USER_EMAIL", "digital-oracle@example.com"))
 
 
 def run_test(name: str, tasks: dict) -> dict:

@@ -295,23 +295,23 @@ class _YFinanceFetcher:
     """Default fetcher backed by the *yfinance* library."""
 
     def __init__(self) -> None:
+        import sys, os
+
+        # Check local .deps directory first (from manual uv pip install --target)
+        _deps = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir, ".deps"
+        )
+        if os.path.isdir(_deps) and _deps not in sys.path:
+            sys.path.insert(0, _deps)
+
         try:
             import yfinance  # type: ignore[import-untyped]
         except ImportError:
-            import subprocess, sys, os
-
-            # Install to a local .deps directory to avoid polluting
-            # managed / externally-managed Python environments.
-            _deps = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir, ".deps"
+            raise ImportError(
+                "yfinance is required for options chain analysis but is not installed.\n"
+                "Install it with:  uv pip install --target .deps yfinance\n"
+                "See README for details."
             )
-            os.makedirs(_deps, exist_ok=True)
-            subprocess.check_call(
-                ["uv", "pip", "install", "--target", _deps, "yfinance"],
-                stdout=sys.stderr,
-            )
-            sys.path.insert(0, _deps)
-            import yfinance  # type: ignore[import-untyped]
 
         self._yf = yfinance
 
