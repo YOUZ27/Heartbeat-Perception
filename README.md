@@ -31,6 +31,25 @@ In a sense, it's a digital oracle for the new era.
 
 If there's a market pricing an outcome, Digital Oracle can give you a probability estimate backed by trading data.
 
+## Data Sources
+
+| Provider | Data Type | Purpose |
+|----------|-----------|---------|
+| Polymarket | Prediction market contracts | Event probability pricing |
+| Kalshi | SEC-regulated binary contracts | US political/economic events |
+| Stooq | Stocks/ETFs/FX/Commodities | Price history and trends |
+| Deribit | Crypto derivatives | Futures term structure, options IV |
+| US Treasury | Treasury yields | Yield curves, inflation expectations |
+| CFTC COT | Futures positioning | Institutional direction (smart money) |
+| CoinGecko | Crypto spot | BTC/ETH price, market cap |
+| SEC EDGAR | Insider trades | Form 4 buy/sell signals |
+| BIS | Central bank data | Policy rates, credit-to-GDP gaps |
+| World Bank | Development indicators | GDP, population, trade |
+| Yahoo Finance | US options chains | IV, Greeks, put/call ratio |
+| Web Search | Web search | VIX, CDS, and other supplementary data |
+
+All APIs are free and require no API keys.
+
 ## Installation
 
 ### OpenClaw
@@ -55,25 +74,6 @@ The agent will clone the repo, read the methodology, and call the providers on i
 ```bash
 uv pip install yfinance
 ```
-
-## Data Sources
-
-| Provider | Data Type | Purpose |
-|----------|-----------|---------|
-| Polymarket | Prediction market contracts | Event probability pricing |
-| Kalshi | SEC-regulated binary contracts | US political/economic events |
-| Stooq | Stocks/ETFs/FX/Commodities | Price history and trends |
-| Deribit | Crypto derivatives | Futures term structure, options IV |
-| US Treasury | Treasury yields | Yield curves, inflation expectations |
-| CFTC COT | Futures positioning | Institutional direction (smart money) |
-| CoinGecko | Crypto spot | BTC/ETH price, market cap |
-| SEC EDGAR | Insider trades | Form 4 buy/sell signals |
-| BIS | Central bank data | Policy rates, credit-to-GDP gaps |
-| World Bank | Development indicators | GDP, population, trade |
-| Yahoo Finance | US options chains | IV, Greeks, put/call ratio |
-| Web Search | Web search | VIX, CDS, and other supplementary data |
-
-All APIs are free and require no API keys.
 
 ## How It Works
 
