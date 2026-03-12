@@ -8,7 +8,9 @@ and plain urllib for page fetching.  All parsing uses stdlib only
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+import threading
+import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from typing import Protocol
@@ -17,6 +19,12 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .base import ProviderError, SignalProvider
+
+
+# Global rate limiter for DDG searches to avoid CAPTCHA triggers.
+_ddg_lock = threading.Lock()
+_ddg_last_request: float = 0.0
+_DDG_MIN_INTERVAL: float = 2.0  # seconds between DDG requests
 
 # ---------------------------------------------------------------------------
 # Protocols
@@ -54,8 +62,6 @@ class UrllibSearchClient:
         if headers:
             hdrs.update(headers)
         req = Request(url, headers=hdrs)
-        import time
-
         last_error: Exception | None = None
         for attempt in range(1, self.retry_attempts + 1):
             try:
@@ -281,28 +287,21 @@ class WebSearchProvider(SignalProvider):
 
     # -- search ------------------------------------------------------------
 
+    _CAPTCHA_MARKERS = ("challenge-form", "cc=botnet", "anomaly-modal", "Please try again")
+    _MAX_RETRIES = 3
+    _RETRY_BACKOFF = 3.0  # seconds, multiplied by attempt number
+
     def search(self, query: WebSearchQuery | str) -> WebSearchResult:
-        """Run a web search and return result snippets."""
+        """Run a web search and return result snippets.
+
+        Includes global rate limiting (one DDG request at a time, with a
+        minimum interval) and CAPTCHA detection with retry/backoff so that
+        concurrent ``gather()`` calls don't overwhelm DDG.
+        """
         if isinstance(query, str):
             query = WebSearchQuery(query=query)
 
-        form_data = urlencode({"q": query.query}).encode("utf-8")
-        req = Request(
-            DDG_HTML_URL,
-            data=form_data,
-            headers={
-                "User-Agent": "predict-by-emh/0.1",
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Accept": "text/html",
-                "Accept-Language": "en-US,en;q=0.9",
-            },
-            method="POST",
-        )
-        try:
-            with urlopen(req, timeout=20.0) as resp:
-                html = resp.read().decode("utf-8", errors="replace")
-        except (HTTPError, URLError, TimeoutError) as exc:
-            raise ProviderError(f"web search failed for: {query.query}") from exc
+        html = self._fetch_ddg(query.query)
 
         raw_results = _parse_ddg_results(html)
         snippets = tuple(
@@ -320,6 +319,67 @@ class WebSearchProvider(SignalProvider):
             snippets=snippets,
             fetched_at=datetime.now(timezone.utc).isoformat(),
         )
+
+    # -- internal DDG fetch with rate limiting + CAPTCHA handling -----------
+
+    @staticmethod
+    def _is_captcha(html: str) -> bool:
+        """Return *True* if *html* looks like a DDG CAPTCHA / bot-block page."""
+        for marker in WebSearchProvider._CAPTCHA_MARKERS:
+            if marker in html:
+                return True
+        # Also flag suspiciously short pages with no result markers.
+        if len(html) < 2000 and "result__a" not in html:
+            return True
+        return False
+
+    def _fetch_ddg(self, query_text: str) -> str:
+        """POST to DDG HTML with rate limiting and CAPTCHA retry."""
+        global _ddg_last_request  # noqa: PLW0603
+
+        last_error: Exception | None = None
+        for attempt in range(1, self._MAX_RETRIES + 1):
+            # -- Rate limit: serialise DDG requests across all threads ------
+            with _ddg_lock:
+                now = time.monotonic()
+                wait = _DDG_MIN_INTERVAL - (now - _ddg_last_request)
+                if wait > 0:
+                    time.sleep(wait)
+                _ddg_last_request = time.monotonic()
+
+            form_data = urlencode({"q": query_text}).encode("utf-8")
+            req = Request(
+                DDG_HTML_URL,
+                data=form_data,
+                headers={
+                    "User-Agent": "predict-by-emh/0.1",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "text/html",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+                method="POST",
+            )
+            try:
+                with urlopen(req, timeout=20.0) as resp:
+                    html = resp.read().decode("utf-8", errors="replace")
+            except (HTTPError, URLError, TimeoutError) as exc:
+                last_error = exc
+                if attempt >= self._MAX_RETRIES:
+                    break
+                time.sleep(self._RETRY_BACKOFF * attempt)
+                continue
+
+            if self._is_captcha(html):
+                if attempt >= self._MAX_RETRIES:
+                    raise ProviderError(
+                        f"DDG CAPTCHA detected after {self._MAX_RETRIES} retries for: {query_text}"
+                    )
+                time.sleep(self._RETRY_BACKOFF * attempt)
+                continue
+
+            return html
+
+        raise ProviderError(f"web search failed for: {query_text}") from last_error
 
     # -- fetch_page --------------------------------------------------------
 

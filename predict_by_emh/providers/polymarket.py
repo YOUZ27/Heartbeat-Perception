@@ -177,7 +177,8 @@ class PolymarketEventQuery:
     order: str | None = "volume_24hr"
     ascending: bool = False
     slug: str | None = None
-    slug_contains: str | None = None
+    slug_contains: str | None = None  # client-side filter on event slug/title
+    tag_slug: str | None = None  # server-side tag filter (e.g. "bitcoin", "ukraine")
     tag_id: int | None = None
     title_contains: str | None = None  # client-side filter on event title
 
@@ -192,6 +193,16 @@ class PolymarketProvider(SignalProvider):
 
     def list_events(self, query: PolymarketEventQuery | None = None) -> list[PolymarketEvent]:
         query = query or PolymarketEventQuery()
+
+        # Determine server-side tag filter.
+        # If tag_slug is explicitly set, use it directly.
+        # If slug_contains is set but tag_slug is not, try it as a tag_slug
+        # (works for common tags like "bitcoin", "ukraine", "taiwan")
+        # and also apply client-side title/slug filtering as fallback.
+        effective_tag = query.tag_slug
+        if effective_tag is None and query.slug_contains:
+            effective_tag = query.slug_contains
+
         payload = self.http_client.get_json(
             f"{GAMMA_BASE_URL}/events",
             params={
@@ -202,13 +213,22 @@ class PolymarketProvider(SignalProvider):
                 "order": _normalize_event_order(query.order),
                 "ascending": query.ascending,
                 "slug": query.slug,
-                "slug_contains": query.slug_contains,
+                "tag_slug": effective_tag,
                 "tag_id": query.tag_id,
             },
         )
         if not isinstance(payload, list):
             raise ProviderParseError("expected events payload to be a list")
         events = [self._parse_event(item) for item in payload]
+
+        # Client-side filtering: slug_contains matches against title and slug.
+        if query.slug_contains:
+            needle = query.slug_contains.strip().lower()
+            events = [
+                e for e in events
+                if needle in e.title.lower() or needle in e.slug.lower()
+            ]
+
         if query.title_contains:
             needle = query.title_contains.strip().lower()
             events = [e for e in events if needle in e.title.lower()]
