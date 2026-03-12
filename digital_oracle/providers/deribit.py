@@ -536,7 +536,7 @@ class DeribitProvider(SignalProvider):
 
         levels: list[DeribitOrderLevel] = []
         for item in raw_levels:
-            if not isinstance(item, list | tuple) or len(item) < 2:
+            if not isinstance(item, (list, tuple)) or len(item) < 2:
                 raise ProviderParseError("expected Deribit order book levels to contain price and size")
             price = _coerce_float(item[0])
             size = _coerce_float(item[1])

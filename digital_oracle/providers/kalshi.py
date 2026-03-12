@@ -307,7 +307,7 @@ class KalshiProvider(SignalProvider):
 
         levels: list[KalshiOrderLevel] = []
         for raw_level in raw_levels:
-            if not isinstance(raw_level, list | tuple) or len(raw_level) < 2:
+            if not isinstance(raw_level, (list, tuple)) or len(raw_level) < 2:
                 raise ProviderParseError("expected Kalshi orderbook levels to contain price and size")
             price_raw = raw_level[0]
             size_raw = raw_level[1]

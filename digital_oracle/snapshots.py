@@ -23,7 +23,7 @@ def _normalize_value(value: object) -> Any:
             str(key): _normalize_value(inner_value)
             for key, inner_value in sorted(value.items(), key=lambda item: str(item[0]))
         }
-    if isinstance(value, list | tuple):
+    if isinstance(value, (list, tuple)):
         return [_normalize_value(item) for item in value]
     return str(value)
 
