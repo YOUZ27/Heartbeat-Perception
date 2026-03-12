@@ -25,37 +25,18 @@
 clawhub install digital-oracle
 ```
 
-或手动克隆：
+### 其他 AI Agent（Claude Code / Cursor / Codex / ...）
 
-```bash
-git clone https://github.com/Eyelids/digital-oracle.git ~/clawd/skills/digital-oracle
-```
+直接告诉你的 Agent：
 
-### Claude Code
+> 安装这个开源项目并读取 SKILL.md 作为你的工作指令：https://github.com/Eyelids/digital-oracle
 
-```bash
-git clone https://github.com/Eyelids/digital-oracle.git
-cat digital-oracle/SKILL.md >> CLAUDE.md
-```
+Agent 会自行 clone 代码、阅读方法论、调用 provider。
 
-### Cursor
+### 前置依赖
 
-```bash
-git clone https://github.com/Eyelids/digital-oracle.git
-mkdir -p .cursor/rules
-cp digital-oracle/SKILL.md .cursor/rules/digital-oracle.md
-```
-
-### Codex
-
-```bash
-git clone https://github.com/Eyelids/digital-oracle.git
-cat digital-oracle/SKILL.md >> AGENTS.md
-```
-
-所有工具都需要安装 [uv](https://docs.astral.sh/uv/)（Python 包管理器），skill 运行时用它来执行 Python 脚本。
-
-12 个数据源中有 11 个零外部依赖（纯 Python 标准库）。期权链分析需要额外安装：
+- [uv](https://docs.astral.sh/uv/) — Python 包管理器，skill 运行时用它执行 Python 脚本
+- 12 个数据源中有 11 个零外部依赖（纯 Python 标准库）。期权链分析需要额外安装：
 
 ```bash
 uv pip install yfinance
