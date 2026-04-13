@@ -42,7 +42,9 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Risk ratios: Copper/Gold ratio (risk-off indicator), Gold/Silver ratio
 - CFTC COT: Institutional positioning changes in crude/gold/wheat (which direction is smart money betting)
 - BIS: Central bank policy rate trends in relevant countries
-- Web search: VIX, MOVE index, sovereign CDS, war risk premiums, BDI freight rates
+- FRED: VIX (VIXCLS), MOVE index (MOVE), high-yield spread (BAMLH0A0HYM2), breakeven inflation (T10YIE)
+- FearGreedProvider: CNN Fear & Greed Index (composite of 7 price signals)
+- Web search: Sovereign CDS, war risk premiums, BDI freight rates
 - Currencies: Currency pairs of relevant countries (e.g. USDRUB=X, USDCNY=X)
 - Country ETFs: Asset flows in relevant countries (e.g. FXI, EWY)
 
@@ -55,9 +57,12 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - World Bank: GDP growth rate historical trends, cross-country comparisons
 - Deribit: BTC futures basis (risk appetite proxy)
 - CoinGecko: Crypto total market cap + BTC dominance (risk appetite proxy)
+- FRED: VIX (VIXCLS), high-yield OAS (BAMLH0A0HYM2), MOVE (MOVE), TED spread (TEDRATE), 10Y-2Y spread (T10Y2Y), initial claims (ICSA)
+- FearGreedProvider: CNN Fear & Greed Index (7 price signals composite → 0-100)
+- CMEFedWatchProvider: Market-implied FOMC rate change probabilities from futures
 - Polymarket: Recession-related contracts, central bank rate path
 - Currencies: DXY/dollar strength, emerging market currencies
-- Web search: High-yield bond spread (HY OAS), TED spread, MOVE index
+- Web search: TTF gas, BDI freight rates
 
 #### Industry cycle / Bubble assessment
 - YahooPriceProvider: Industry leader stock trends, sector ETFs
@@ -67,6 +72,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - EDGAR: Industry leader insider trading cadence (Form 4) — concentrated selling = bearish signal
 - CFTC COT: Institutional positioning changes in related commodities
 - CoinGecko: For crypto industry, look at BTC/ETH/altcoin market cap distribution
+- FRED: Margin debt (BOGZ1FL663067003Q), relevant macro indicators
 - Web search: VC funding concentration, leveraged ETF concentration
 - Deribit: Implied volatility of related crypto assets
 
@@ -80,6 +86,8 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - CoinGecko: For crypto assets, check market cap, ATH/ATL distance, 24h volatility
 - Deribit: Crypto options chain (implied volatility = market's expected range)
 - Polymarket/Kalshi: Probability pricing of related events
+- FearGreedProvider: CNN Fear & Greed composite score (momentum, breadth, VIX, put/call, junk bond demand, volatility, safe haven)
+- FRED: VIX (VIXCLS), relevant yield spreads
 - Web search: Corporate bond issuance volume, analyst rating distribution
 
 #### Stock/Options analysis / Crash probability
@@ -89,7 +97,9 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - CFTC COT: S&P 500/VIX futures positioning → institutional direction
 - Defensive rotation: XLY (cyclical) vs XLP (defensive) vs XLU (utilities) relative performance → market defensiveness
 - Treasury: Yield curve shape → recession signal
-- Web search: VIX level, margin debt level, leveraged ETF concentration
+- FRED: VIX (VIXCLS), margin debt (BOGZ1FL663067003Q)
+- FearGreedProvider: CNN Fear & Greed Index
+- Web search: Leveraged ETF concentration
 
 **Available trading symbols directory:** See [references/symbols.md](references/symbols.md)
 **Provider API reference:** See [references/providers.md](references/providers.md)
@@ -112,6 +122,9 @@ from digital_oracle import (
     BisProvider, BisRateQuery,
     WorldBankProvider, WorldBankQuery,
     YFinanceProvider, OptionsChainQuery,      # requires uv pip install yfinance
+    FredProvider, FredSeriesQuery,
+    FearGreedProvider,
+    CMEFedWatchProvider,
     gather,
 )
 
@@ -127,6 +140,9 @@ edgar = EdgarProvider(user_email="you@example.com")  # SEC requires email in Use
 bis = BisProvider()
 wb = WorldBankProvider()
 yf = YFinanceProvider()  # requires uv pip install yfinance
+fred = FredProvider(api_key="YOUR_FRED_API_KEY")  # free at https://fredaccount.stlouisfed.org/apikeys
+fear_greed = FearGreedProvider()
+fedwatch = CMEFedWatchProvider()
 
 result = gather({
     "pm_events": lambda: pm.list_events(PolymarketEventQuery(slug_contains="...", limit=10)),
@@ -148,9 +164,17 @@ result = gather({
     "kalshi_fed": lambda: kalshi.list_markets(KalshiMarketQuery(series_ticker="KXFED", limit=10)),
     # Options chain (with Greeks)
     "spy_options": lambda: yf.get_chain(OptionsChainQuery(ticker="SPY", expiration="2026-04-17")),
-    # Web search runs in parallel with structured providers
-    "vix": lambda: web.search("VIX index current level"),
-    "hy_spread": lambda: web.search("US high yield bond spread OAS"),
+    # FRED economic data (replaces web search for VIX/OAS/MOVE)
+    "vix": lambda: fred.get_series(FredSeriesQuery(series_id="VIXCLS", limit=30)),
+    "hy_spread": lambda: fred.get_series(FredSeriesQuery(series_id="BAMLH0A0HYM2", limit=30)),
+    "move": lambda: fred.get_series(FredSeriesQuery(series_id="MOVE", limit=30)),
+    "t10y2y": lambda: fred.get_series(FredSeriesQuery(series_id="T10Y2Y", limit=30)),
+    # CNN Fear & Greed (composite of 7 price signals)
+    "fear_greed": lambda: fear_greed.get_index(),
+    # CME FedWatch (implied rate probabilities from futures)
+    "fedwatch": lambda: fedwatch.get_probabilities(),
+    # Web search for data not in structured providers
+    "cds": lambda: web.search("US sovereign CDS 5 year spread"),
 })
 
 # Partial failures don't affect other results
@@ -165,7 +189,7 @@ if chain:
     print(f"Max pain: {chain.max_pain()}")
 ```
 
-**All 12 Providers:**
+**All 15 Providers:**
 
 | Provider | Data Type | Purpose | Dependency |
 |----------|-----------|---------|------------|
@@ -174,22 +198,27 @@ if chain:
 | YahooPriceProvider | Price history | Stocks/ETFs/FX/Commodities | yfinance |
 | DeribitProvider | Crypto derivatives | Futures term structure, options IV | stdlib |
 | USTreasuryProvider | Treasury yields | Yield curves, inflation expectations | stdlib |
-| WebSearchProvider | Web search | VIX/MOVE/CDS supplementary data | stdlib |
+| WebSearchProvider | Web search | CDS/BDI/TTF supplementary data | stdlib |
 | CftcCotProvider | Futures positioning | Institutional direction (smart money) | stdlib |
 | CoinGeckoProvider | Crypto spot | BTC/ETH price, market cap, dominance | stdlib |
 | EdgarProvider | SEC filings | Insider trades Form 4, filing search | stdlib |
 | BisProvider | Central bank data | Policy rates, credit-to-GDP gap | stdlib |
 | WorldBankProvider | Development indicators | GDP, population, trade, macro data | stdlib |
-| **YFinanceProvider** | **US options chains** | **IV, Greeks, put/call ratio, max pain** | **yfinance** |
+| YFinanceProvider | US options chains | IV, Greeks, put/call ratio, max pain | yfinance |
+| **FredProvider** | **Economic time series** | **VIX, OAS, MOVE, yield spreads, CPI** | **stdlib (API key)** |
+| **FearGreedProvider** | **Market sentiment** | **CNN 7-signal composite → 0-100 score** | **stdlib** |
+| **CMEFedWatchProvider** | **Rate probabilities** | **FOMC rate change implied from futures** | **stdlib** |
 
-> 10 out of 12 providers have zero external dependencies. YahooPriceProvider and YFinanceProvider require `pip install yfinance`.
+> 13 out of 15 providers have zero external dependencies. YahooPriceProvider and YFinanceProvider require `pip install yfinance`. FredProvider requires a free API key from https://fredaccount.stlouisfed.org/apikeys.
 
 **WebSearchProvider usage:**
 - `web.search("query")` → returns `WebSearchResult` (search summary) — render with `.text()`
 - `web.fetch_page("url")` → returns `WebPageContent` (page body extraction)
 - Search engine is DuckDuckGo, zero API keys needed
 
-**Data not available via YahooPriceProvider — use web search instead:** VIX, MOVE, CDS spreads, TTF natural gas, BDI freight rates, war risk premiums, IMF forecasts — these need to be fetched from financial web pages. They are still trading data and comply with the methodology.
+**Data now available via FredProvider (no longer needs web search):** VIX (`VIXCLS`), MOVE (`MOVE`), high-yield OAS (`BAMLH0A0HYM2`), 10Y-2Y spread (`T10Y2Y`), TED spread (`TEDRATE`), breakeven inflation (`T10YIE`), initial claims (`ICSA`), CPI (`CPIAUCSL`), margin debt (`BOGZ1FL663067003Q`).
+
+**Still needs web search:** CDS spreads, TTF natural gas, BDI freight rates, war risk premiums — these need to be fetched from financial web pages.
 
 ### Step 4: Contradiction analysis
 
@@ -278,4 +307,7 @@ This is the key to report quality. Don't just summarize data — find contradict
 - Max pain is the strike price maximizing market maker profit — actual expiration price often converges toward max pain
 - Kalshi does NOT support keyword search — use `series_ticker` or `event_ticker` to filter markets. Find tickers by browsing [kalshi.com](https://kalshi.com) or listing markets without filters first. Common series: `KXFED` (Fed rates), `KXINX` (S&P 500 range), `KXGDP` (GDP)
 - Deribit futures method is `get_futures_term_structure()`, not `get_futures_curve()`. Option chain method is `get_option_chain()`
+- FredProvider requires a free API key — register at https://fredaccount.stlouisfed.org/apikeys. Common series: `VIXCLS` (VIX), `BAMLH0A0HYM2` (HY OAS), `MOVE` (bond volatility), `T10Y2Y` (10Y-2Y spread), `TEDRATE` (TED spread), `T10YIE` (breakeven inflation), `ICSA` (initial claims), `CPIAUCSL` (CPI). Use `search_series()` to find others among 840K+ series
+- FearGreedProvider has no API key requirement. Returns a single composite score (0-100) synthesizing 7 market price signals: stock momentum, breadth, VIX, put/call ratio, junk bond demand, volatility, safe haven demand. Score < 25 = Extreme Fear, > 75 = Extreme Greed
+- CMEFedWatchProvider has no API key requirement. Returns implied rate change probabilities for upcoming FOMC meetings, derived from 30-day Fed Funds futures prices. Note: the CME endpoint may occasionally be unavailable or change format — if it fails, fall back to Kalshi `KXFED` series for rate probabilities
 - When reporting dollar amounts, use `USD` instead of `$` to avoid markdown renderers interpreting `$...$` as LaTeX

@@ -83,6 +83,23 @@ from .worldbank import (
     WorldBankQuery,
     WorldBankResult,
 )
+from .fred import (
+    FredObservation,
+    FredProvider,
+    FredSearchQuery,
+    FredSeries,
+    FredSeriesInfo,
+    FredSeriesQuery,
+)
+from .fear_greed import (
+    FearGreedProvider,
+    FearGreedSnapshot,
+)
+from .cme_fedwatch import (
+    CMEFedWatchProvider,
+    FedMeetingProbability,
+    FedRateProb,
+)
 from .yfinance_provider import (
     OptionContract,
     OptionGreeks,
@@ -107,6 +124,7 @@ __all__ = [
     "CoinGeckoMarketQuery",
     "CoinGeckoPrice",
     "CoinGeckoPriceQuery",
+    "CMEFedWatchProvider",
     "CoinGeckoProvider",
     "DeribitBookSummary",
     "DeribitFutureTermPoint",
@@ -127,8 +145,18 @@ __all__ = [
     "EdgarProvider",
     "EdgarSearchHit",
     "EdgarSearchQuery",
+    "FearGreedProvider",
+    "FearGreedSnapshot",
+    "FedMeetingProbability",
+    "FedRateProb",
     "ExchangeRateQuery",
     "ExchangeRateRecord",
+    "FredObservation",
+    "FredProvider",
+    "FredSearchQuery",
+    "FredSeries",
+    "FredSeriesInfo",
+    "FredSeriesQuery",
     "KalshiEvent",
     "KalshiMarket",
     "KalshiMarketQuery",

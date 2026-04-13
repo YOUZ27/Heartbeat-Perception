@@ -101,16 +101,25 @@ VIX/MOVE 精确值推荐 web search — 搜 "VIX index current" / "MOVE index cu
 | `EWZ` | iShares MSCI Brazil ETF | 巴西/新兴市场 |
 | `EWA` | iShares MSCI Australia ETF | 大宗商品国 |
 
-## 需要 Web Search 的关键数据
+## 现已通过 FredProvider 获取（不再需要 Web Search）
 
-以下数据 YahooPriceProvider 无法提供，但对分析至关重要，需通过 web search 获取：
+| 数据 | FRED Series ID | 信号含义 |
+|------|---------------|---------|
+| VIX | `VIXCLS` | 股市隐含波动率，短期恐慌度 |
+| MOVE Index | `MOVE` | 债市隐含波动率 |
+| 高收益债利差 | `BAMLH0A0HYM2` | 信用风险溢价（ICE BofA US High Yield OAS） |
+| 10Y-2Y 利差 | `T10Y2Y` | 收益率曲线斜率，衰退预警 |
+| TED Spread | `TEDRATE` | 银行间信用风险 |
+| 通胀预期 | `T10YIE` | 10年盈亏平衡通胀率 |
+| 初请失业金 | `ICSA` | 劳动力市场实时指标 |
+| CPI | `CPIAUCSL` | 消费者价格指数 |
+| 保证金债务 | `BOGZ1FL663067003Q` | 杠杆水平 |
+
+## 仍需 Web Search 的数据
 
 | 数据 | 搜索关键词 | 信号含义 |
 |------|-----------|---------|
-| VIX | "VIX index current" | 股市隐含波动率，短期恐慌度 |
-| MOVE Index | "MOVE index bond volatility" | 债市隐含波动率 |
 | 主权 CDS | "[国家] sovereign CDS 5 year spread" | 国家违约/战争风险直接定价 |
 | TTF 天然气 | "TTF European natural gas price" | 欧洲能源安全 |
 | BDI 运价 | "Baltic Dry Index current" | 全球航运活动 |
 | 战争险保费 | "war risk insurance premium shipping [地区]" | 保险市场对冲突区的直接定价 |
-| 高收益债利差 | "US high yield OAS spread" | 信用风险溢价 |

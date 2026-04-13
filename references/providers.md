@@ -1,6 +1,6 @@
 # Provider API 速查
 
-前 10 个 provider 零外部依赖。YahooPriceProvider 和 YFinanceProvider 需要 `pip install yfinance`。
+前 13 个 provider 零外部依赖（FredProvider 需要免费 API key）。YahooPriceProvider 和 YFinanceProvider 需要 `pip install yfinance`。
 
 ```python
 from digital_oracle import (
@@ -16,6 +16,9 @@ from digital_oracle import (
     BisProvider, BisRateQuery, BisCreditGapQuery,
     WorldBankProvider, WorldBankQuery,
     YFinanceProvider, OptionsChainQuery,      # pip install yfinance
+    FredProvider, FredSeriesQuery, FredSearchQuery,
+    FearGreedProvider,
+    CMEFedWatchProvider,
 )
 ```
 
@@ -373,3 +376,83 @@ g = black_scholes_greeks(S=150, K=145, T=0.1, r=0.045, sigma=0.25, option_type="
 - `atm_iv` vs 历史实际波动率 → IV 溢价/折价判断（期权"贵不贵"）
 - `max_pain` = 到期时价格常向此收敛（做市商利益最大化）
 - IV skew：比较同 delta 的 OTM put IV vs OTM call IV → 市场对下跌的恐惧程度
+
+## FredProvider
+
+FRED（美联储经济数据库），84 万条时间序列。**需要免费 API key**（注册 https://fredaccount.stlouisfed.org/apikeys）。
+
+```python
+fred = FredProvider(api_key="YOUR_FRED_API_KEY")
+
+# 获取时间序列数据（最近 30 个数据点，降序）
+vix = fred.get_series(FredSeriesQuery(series_id="VIXCLS", limit=30))
+# 返回 FredSeries
+# vix.series_id, vix.title, vix.frequency, vix.units
+# vix.observations -> tuple[FredObservation, ...]
+# obs.date ("2026-04-10"), obs.value (19.23)
+# 注意：缺失值（"."）自动过滤
+
+# 指定日期范围
+oas = fred.get_series(FredSeriesQuery(
+    series_id="BAMLH0A0HYM2",
+    observation_start="2025-01-01",
+    observation_end="2026-04-10",
+    sort_order="asc",
+))
+
+# 搜索序列
+results = fred.search_series(FredSearchQuery(search_text="volatility index", limit=10))
+# 返回 list[FredSeriesInfo]
+# info.series_id, info.title, info.frequency, info.units
+# info.observation_start, info.observation_end, info.popularity
+```
+
+**常用 series_id：**
+- `VIXCLS` — CBOE Volatility Index (VIX)
+- `BAMLH0A0HYM2` — ICE BofA US High Yield OAS
+- `MOVE` — ICE BofAML MOVE Index（债市波动率）
+- `T10Y2Y` — 10-Year minus 2-Year Treasury Spread
+- `TEDRATE` — TED Spread
+- `T10YIE` — 10-Year Breakeven Inflation Rate
+- `ICSA` — Initial Jobless Claims
+- `CPIAUCSL` — Consumer Price Index (CPI)
+- `BOGZ1FL663067003Q` — Margin Debt
+
+## FearGreedProvider
+
+CNN Fear & Greed Index。7 个价格信号的加权合成，不是观点聚合。
+
+```python
+fg = FearGreedProvider()
+
+snap = fg.get_index()
+# 返回 FearGreedSnapshot
+# snap.score          # 0-100 (0=Extreme Fear, 100=Extreme Greed)
+# snap.rating         # "Extreme Fear", "Fear", "Neutral", "Greed", "Extreme Greed"
+# snap.timestamp      # ISO timestamp
+# snap.previous_close # 前一交易日收盘值
+# snap.one_week_ago   # 一周前
+# snap.one_month_ago  # 一个月前
+# snap.one_year_ago   # 一年前
+```
+
+**7 个组成信号：** 股票价格动量（S&P 500 vs 125日均线）、股票价格强度（52周新高/新低）、股票价格波幅（VIX）、Put/Call期权比率、垃圾债需求（高收益vs投资级利差）、市场波动率（VIX偏离度）、避险需求（股票vs债券收益率差）
+
+## CMEFedWatchProvider
+
+CME FedWatch 利率期货隐含概率。从 30 天联邦基金利率期货价格推算。
+
+```python
+fw = CMEFedWatchProvider()
+
+meetings = fw.get_probabilities()
+# 返回 list[FedMeetingProbability]
+# m.meeting_date          # e.g. "2026-05-07"
+# m.current_target_low    # e.g. 4.25
+# m.current_target_high   # e.g. 4.50
+# m.probabilities         # tuple[FedRateProb, ...]
+#   p.target_low, p.target_high  # e.g. 4.00, 4.25
+#   p.probability                # 0.0 to 1.0
+```
+
+**注意：** CME endpoint 可能偶尔不可用。如果失败，可用 Kalshi `KXFED` 系列作为备选获取利率概率。
