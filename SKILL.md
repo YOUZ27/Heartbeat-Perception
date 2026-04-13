@@ -37,18 +37,18 @@ Based on question type, select from the signal menu below. **Don't use just one 
 #### Geopolitical conflict / War risk
 - Polymarket: Search for related event contracts (ceasefire, invasion, regime change, declaration of war)
 - Kalshi: Search for related binary contracts
-- Safe-haven assets: Gold (xauusd), silver (xagusd), Swiss franc (usdchf)
-- Conflict proxies: Crude oil (cl.c), natural gas (ng.c), wheat (zw.c), defense ETF (ita.us), defense stocks
+- Safe-haven assets: Gold (GC=F), silver (SI=F), Swiss franc (USDCHF=X)
+- Conflict proxies: Crude oil (CL=F), natural gas (NG=F), wheat (ZW=F), defense ETF (ITA), defense stocks
 - Risk ratios: Copper/Gold ratio (risk-off indicator), Gold/Silver ratio
 - CFTC COT: Institutional positioning changes in crude/gold/wheat (which direction is smart money betting)
 - BIS: Central bank policy rate trends in relevant countries
 - Web search: VIX, MOVE index, sovereign CDS, war risk premiums, BDI freight rates
-- Currencies: Currency pairs of relevant countries (e.g. usdrub, usdcny)
-- Country ETFs: Asset flows in relevant countries (e.g. fxi.us, ewy.us)
+- Currencies: Currency pairs of relevant countries (e.g. USDRUB=X, USDCNY=X)
+- Country ETFs: Asset flows in relevant countries (e.g. FXI, EWY)
 
 #### Economic recession / Macro cycle
 - Treasury: Yield curve shape (10Y-2Y spread, 10Y-3M spread), real rates, breakeven inflation
-- Stooq: SPY, copper (hg.c), crude oil, BDI freight rate trends
+- YahooPriceProvider: SPY, copper (HG=F), crude oil (CL=F), price trends
 - Risk ratios: Copper/Gold ratio
 - CFTC COT: Speculative net positions in copper/crude (is managed money bullish or bearish)
 - BIS: Credit-to-GDP gap (credit overheating = late cycle), policy rate directions
@@ -60,7 +60,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Web search: High-yield bond spread (HY OAS), TED spread, MOVE index
 
 #### Industry cycle / Bubble assessment
-- Stooq: Industry leader stock trends, sector ETFs
+- YahooPriceProvider: Industry leader stock trends, sector ETFs
 - Find the industry's "single-purpose commodity" (e.g. GPU rental price → AI, rebar → construction)
 - Upstream equipment maker orders/stock price (e.g. ASML → semiconductors)
 - Leader company valuation discount (e.g. TSMC vs peers → Taiwan Strait risk pricing)
@@ -71,7 +71,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Deribit: Implied volatility of related crypto assets
 
 #### Asset pricing / Whether to buy
-- Stooq: Target asset price trend (daily/weekly/monthly)
+- YahooPriceProvider: Target asset price trend (daily/weekly/monthly)
 - Relative price changes of correlated assets (divergence between two commodities = structural signal)
 - Treasury: Risk-free rate as valuation anchor
 - YFinance: Options chain (IV, put/call ratio, max pain, Greeks, implied move)
@@ -84,7 +84,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 
 #### Stock/Options analysis / Crash probability
 - YFinance: Options chain → ATM IV (expected volatility), IV skew (upside/downside fear asymmetry), put/call ratio (bull/bear sentiment), max pain (market maker profit zone), implied move (expected price range), Greeks (delta ≈ ITM probability)
-- Stooq: Underlying historical price → realized volatility (compare vs implied volatility to judge options premium)
+- YahooPriceProvider: Underlying historical price → realized volatility (compare vs implied volatility to judge options premium)
 - Kalshi: SPY/NASDAQ price range markets → direct probability pricing
 - CFTC COT: S&P 500/VIX futures positioning → institutional direction
 - Defensive rotation: XLY (cyclical) vs XLP (defensive) vs XLU (utilities) relative performance → market defensiveness
@@ -102,7 +102,7 @@ Use digital-oracle's Python providers to fetch structured data, calling all sour
 from digital_oracle import (
     PolymarketProvider, PolymarketEventQuery,
     KalshiProvider, KalshiMarketQuery,
-    StooqProvider, PriceHistoryQuery,
+    YahooPriceProvider, PriceHistoryQuery,   # requires uv pip install yfinance
     DeribitProvider, DeribitFuturesCurveQuery,
     USTreasuryProvider, YieldCurveQuery,
     WebSearchProvider,
@@ -111,13 +111,13 @@ from digital_oracle import (
     EdgarProvider, EdgarInsiderQuery,
     BisProvider, BisRateQuery,
     WorldBankProvider, WorldBankQuery,
-    YFinanceProvider, OptionsChainQuery,  # requires uv pip install yfinance
+    YFinanceProvider, OptionsChainQuery,      # requires uv pip install yfinance
     gather,
 )
 
 pm = PolymarketProvider()
 kalshi = KalshiProvider()
-stooq = StooqProvider()
+yahoo = YahooPriceProvider()  # requires uv pip install yfinance
 deribit = DeribitProvider()
 treasury = USTreasuryProvider()
 web = WebSearchProvider()
@@ -131,7 +131,7 @@ yf = YFinanceProvider()  # requires uv pip install yfinance
 result = gather({
     "pm_events": lambda: pm.list_events(PolymarketEventQuery(slug_contains="...", limit=10)),
     "yield_curve": lambda: treasury.latest_yield_curve(),
-    "gold": lambda: stooq.get_history(PriceHistoryQuery(symbol="xauusd", limit=30)),
+    "gold": lambda: yahoo.get_history(PriceHistoryQuery(symbol="GC=F", limit=30)),
     # Institutional positioning
     "gold_cot": lambda: cftc.list_reports(CftcCotQuery(commodity_name="GOLD", limit=4)),
     # Crypto market sentiment
@@ -142,6 +142,10 @@ result = gather({
     "rates": lambda: bis.get_policy_rates(BisRateQuery(countries=("US", "CN"), start_year=2023)),
     # GDP data
     "gdp": lambda: wb.get_indicator(WorldBankQuery(indicator="NY.GDP.MKTP.CD", countries=("US", "CN"))),
+    # BTC futures term structure (risk appetite proxy)
+    "btc_futures": lambda: deribit.get_futures_term_structure(DeribitFuturesCurveQuery(currency="BTC")),
+    # Kalshi event markets (use event_ticker or series_ticker, not keyword search)
+    "kalshi_fed": lambda: kalshi.list_markets(KalshiMarketQuery(series_ticker="KXFED", limit=10)),
     # Options chain (with Greeks)
     "spy_options": lambda: yf.get_chain(OptionsChainQuery(ticker="SPY", expiration="2026-04-17")),
     # Web search runs in parallel with structured providers
@@ -167,7 +171,7 @@ if chain:
 |----------|-----------|---------|------------|
 | PolymarketProvider | Prediction market contracts | Event probability pricing | stdlib |
 | KalshiProvider | Binary contracts | US regulated event contracts | stdlib |
-| StooqProvider | Price history | Stocks/ETFs/FX/Commodities | stdlib |
+| YahooPriceProvider | Price history | Stocks/ETFs/FX/Commodities | yfinance |
 | DeribitProvider | Crypto derivatives | Futures term structure, options IV | stdlib |
 | USTreasuryProvider | Treasury yields | Yield curves, inflation expectations | stdlib |
 | WebSearchProvider | Web search | VIX/MOVE/CDS supplementary data | stdlib |
@@ -178,14 +182,14 @@ if chain:
 | WorldBankProvider | Development indicators | GDP, population, trade, macro data | stdlib |
 | **YFinanceProvider** | **US options chains** | **IV, Greeks, put/call ratio, max pain** | **yfinance** |
 
-> 11 out of 12 providers have zero external dependencies. YFinanceProvider requires `pip install yfinance`.
+> 10 out of 12 providers have zero external dependencies. YahooPriceProvider and YFinanceProvider require `pip install yfinance`.
 
 **WebSearchProvider usage:**
 - `web.search("query")` → returns `WebSearchResult` (search summary) — render with `.text()`
 - `web.fetch_page("url")` → returns `WebPageContent` (page body extraction)
 - Search engine is DuckDuckGo, zero API keys needed
 
-**Data not available on Stooq — use web search instead:** VIX, MOVE, CDS spreads, TTF natural gas, BDI freight rates, war risk premiums, IMF forecasts — these need to be fetched from financial web pages. They are still trading data and comply with the methodology.
+**Data not available via YahooPriceProvider — use web search instead:** VIX, MOVE, CDS spreads, TTF natural gas, BDI freight rates, war risk premiums, IMF forecasts — these need to be fetched from financial web pages. They are still trading data and comply with the methodology.
 
 ### Step 4: Contradiction analysis
 
@@ -257,10 +261,11 @@ This is the key to report quality. Don't just summarize data — find contradict
 ## Notes
 
 - Polymarket `slug_contains` search is fuzzy — filter results by title keywords after fetching
-- Stooq futures symbols use `.c` suffix (e.g. `hg.c`, `ng.c`, `zw.c`, `cl.c`), not `.f`
-- Stooq has limited European stock coverage (e.g. Rheinmetall unavailable) — supplement with web search
+- YahooPriceProvider uses Yahoo Finance symbols: futures use `=F` suffix (e.g. `GC=F`, `CL=F`, `HG=F`), forex uses `=X` suffix (e.g. `EURUSD=X`), US stocks/ETFs use plain tickers (e.g. `SPY`, `LMT`)
+- YahooPriceProvider requires `yfinance` — install with `uv pip install --target .deps yfinance`
+- European stocks available on Yahoo Finance with exchange suffix (e.g. `RHM.DE` for Rheinmetall, `BA.L` for BAE Systems)
 - Prediction market contracts vary in liquidity — contracts with volume < $100K should be discounted
-- Different signals update at different frequencies: prediction markets real-time, Stooq daily delayed, Treasury weekly
+- Different signals update at different frequencies: prediction markets real-time, Yahoo Finance daily delayed, Treasury weekly
 - CFTC COT updates Tuesday, published Friday. commodity_name uses uppercase ("GOLD", "CRUDE OIL", "S&P 500")
 - CoinGecko free API has rate limits (~10-30 req/min) — don't pack too many CoinGecko calls in gather
 - EDGAR requires `EdgarProvider(user_email="you@example.com")` — SEC requires email in User-Agent, otherwise 403. First call parses ticker→CIK mapping, slightly slow
@@ -271,4 +276,6 @@ This is the key to report quality. Don't just summarize data — find contradict
 - Absolute value of put delta ≈ probability of that strike being ITM at expiration (rough estimate)
 - Put/Call ratio > 1.5 is typically bearish, but as a contrarian indicator, extreme values (> 3) may signal a bottom
 - Max pain is the strike price maximizing market maker profit — actual expiration price often converges toward max pain
+- Kalshi does NOT support keyword search — use `series_ticker` or `event_ticker` to filter markets. Find tickers by browsing [kalshi.com](https://kalshi.com) or listing markets without filters first. Common series: `KXFED` (Fed rates), `KXINX` (S&P 500 range), `KXGDP` (GDP)
+- Deribit futures method is `get_futures_term_structure()`, not `get_futures_curve()`. Option chain method is `get_option_chain()`
 - When reporting dollar amounts, use `USD` instead of `$` to avoid markdown renderers interpreting `$...$` as LaTeX

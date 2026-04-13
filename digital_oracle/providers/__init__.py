@@ -60,7 +60,7 @@ from .polymarket import (
     PolymarketProvider,
 )
 from .prices import PriceBar, PriceHistory, PriceHistoryQuery
-from .stooq import StooqProvider
+from .yahoo import YahooPriceProvider
 from .treasury import (
     ExchangeRateQuery,
     ExchangeRateRecord,
@@ -147,7 +147,7 @@ __all__ = [
     "PriceHistoryQuery",
     "ProviderMetadata",
     "SignalProvider",
-    "StooqProvider",
+    "YahooPriceProvider",
     "USTreasuryProvider",
     "WebPageContent",
     "WebPageQuery",

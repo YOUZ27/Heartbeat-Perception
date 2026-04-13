@@ -1,12 +1,12 @@
 # Provider API 速查
 
-前 11 个 provider 零外部依赖。YFinanceProvider 需要 `pip install yfinance`。
+前 10 个 provider 零外部依赖。YahooPriceProvider 和 YFinanceProvider 需要 `pip install yfinance`。
 
 ```python
 from digital_oracle import (
     PolymarketProvider, PolymarketEventQuery,
     KalshiProvider, KalshiMarketQuery,
-    StooqProvider, PriceHistoryQuery,
+    YahooPriceProvider, PriceHistoryQuery,   # pip install yfinance
     DeribitProvider, DeribitFuturesCurveQuery, DeribitOptionChainQuery,
     USTreasuryProvider, YieldCurveQuery, ExchangeRateQuery,
     WebSearchProvider,
@@ -15,7 +15,7 @@ from digital_oracle import (
     EdgarProvider, EdgarInsiderQuery, EdgarSearchQuery,
     BisProvider, BisRateQuery, BisCreditGapQuery,
     WorldBankProvider, WorldBankQuery,
-    YFinanceProvider, OptionsChainQuery,  # pip install yfinance
+    YFinanceProvider, OptionsChainQuery,      # pip install yfinance
 )
 ```
 
@@ -70,15 +70,15 @@ book = k.get_order_book("KXFED-27APR-T4.25", depth=10)
 # book.best_yes_ask, book.best_no_ask
 ```
 
-## StooqProvider
+## YahooPriceProvider
 
-全球价格历史。股票、ETF、外汇、商品、指数。
+全球价格历史。股票、ETF、外汇、商品、指数。**需要 `pip install yfinance`。**
 
 ```python
-s = StooqProvider()
+yahoo = YahooPriceProvider()
 
-hist = s.get_history(PriceHistoryQuery(
-    symbol="xauusd",     # 见 symbols.md
+hist = yahoo.get_history(PriceHistoryQuery(
+    symbol="GC=F",       # 见 symbols.md
     interval="m",        # d=日线 w=周线 m=月线
     limit=12,            # 最近 N 根 bar
 ))
@@ -89,12 +89,12 @@ hist = s.get_history(PriceHistoryQuery(
 # hist.earliest -> 最早 bar
 ```
 
-**符号命名规则：**
-- 美股: `spy.us`, `lmt.us`, `ccj.us`
-- 外汇: `eurusd`, `usdjpy`, `usdchf`
-- 商品期货: `hg.c`, `ng.c`, `zw.c`, `cl.c`
-- 贵金属: `xauusd`, `xagusd`
-- 英股: `ba.uk`
+**符号命名规则（Yahoo Finance）：**
+- 美股/ETF: `SPY`, `LMT`, `CCJ`, `ITA`
+- 外汇: `EURUSD=X`, `USDJPY=X`, `USDCHF=X`
+- 商品期货: `HG=F`, `NG=F`, `ZW=F`, `CL=F`, `BZ=F`
+- 贵金属: `GC=F`（黄金）, `SI=F`（白银）
+- 欧洲股票: `RHM.DE`, `BA.L`
 
 ## DeribitProvider
 
