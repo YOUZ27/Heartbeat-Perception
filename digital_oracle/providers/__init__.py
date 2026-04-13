@@ -60,6 +60,7 @@ from .polymarket import (
     PolymarketProvider,
 )
 from .prices import PriceBar, PriceHistory, PriceHistoryQuery
+from .stooq import StooqProvider
 from .yahoo import YahooPriceProvider
 from .treasury import (
     ExchangeRateQuery,
@@ -82,14 +83,6 @@ from .worldbank import (
     WorldBankProvider,
     WorldBankQuery,
     WorldBankResult,
-)
-from .fred import (
-    FredObservation,
-    FredProvider,
-    FredSearchQuery,
-    FredSeries,
-    FredSeriesInfo,
-    FredSeriesQuery,
 )
 from .fear_greed import (
     FearGreedProvider,
@@ -151,12 +144,6 @@ __all__ = [
     "FedRateProb",
     "ExchangeRateQuery",
     "ExchangeRateRecord",
-    "FredObservation",
-    "FredProvider",
-    "FredSearchQuery",
-    "FredSeries",
-    "FredSeriesInfo",
-    "FredSeriesQuery",
     "KalshiEvent",
     "KalshiMarket",
     "KalshiMarketQuery",
@@ -175,6 +162,7 @@ __all__ = [
     "PriceHistoryQuery",
     "ProviderMetadata",
     "SignalProvider",
+    "StooqProvider",
     "YahooPriceProvider",
     "USTreasuryProvider",
     "WebPageContent",

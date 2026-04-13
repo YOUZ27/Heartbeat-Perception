@@ -1,6 +1,6 @@
 # Provider API 速查
 
-前 13 个 provider 零外部依赖（FredProvider 需要免费 API key）。YahooPriceProvider 和 YFinanceProvider 需要 `pip install yfinance`。
+所有 provider 零 API key。YahooPriceProvider 和 YFinanceProvider 需要 `pip install yfinance`。
 
 ```python
 from digital_oracle import (
@@ -16,7 +16,6 @@ from digital_oracle import (
     BisProvider, BisRateQuery, BisCreditGapQuery,
     WorldBankProvider, WorldBankQuery,
     YFinanceProvider, OptionsChainQuery,      # pip install yfinance
-    FredProvider, FredSeriesQuery, FredSearchQuery,
     FearGreedProvider,
     CMEFedWatchProvider,
 )
@@ -376,47 +375,6 @@ g = black_scholes_greeks(S=150, K=145, T=0.1, r=0.045, sigma=0.25, option_type="
 - `atm_iv` vs 历史实际波动率 → IV 溢价/折价判断（期权"贵不贵"）
 - `max_pain` = 到期时价格常向此收敛（做市商利益最大化）
 - IV skew：比较同 delta 的 OTM put IV vs OTM call IV → 市场对下跌的恐惧程度
-
-## FredProvider
-
-FRED（美联储经济数据库），84 万条时间序列。**需要免费 API key**（注册 https://fredaccount.stlouisfed.org/apikeys）。
-
-```python
-fred = FredProvider(api_key="YOUR_FRED_API_KEY")
-
-# 获取时间序列数据（最近 30 个数据点，降序）
-vix = fred.get_series(FredSeriesQuery(series_id="VIXCLS", limit=30))
-# 返回 FredSeries
-# vix.series_id, vix.title, vix.frequency, vix.units
-# vix.observations -> tuple[FredObservation, ...]
-# obs.date ("2026-04-10"), obs.value (19.23)
-# 注意：缺失值（"."）自动过滤
-
-# 指定日期范围
-oas = fred.get_series(FredSeriesQuery(
-    series_id="BAMLH0A0HYM2",
-    observation_start="2025-01-01",
-    observation_end="2026-04-10",
-    sort_order="asc",
-))
-
-# 搜索序列
-results = fred.search_series(FredSearchQuery(search_text="volatility index", limit=10))
-# 返回 list[FredSeriesInfo]
-# info.series_id, info.title, info.frequency, info.units
-# info.observation_start, info.observation_end, info.popularity
-```
-
-**常用 series_id：**
-- `VIXCLS` — CBOE Volatility Index (VIX)
-- `BAMLH0A0HYM2` — ICE BofA US High Yield OAS
-- `MOVE` — ICE BofAML MOVE Index（债市波动率）
-- `T10Y2Y` — 10-Year minus 2-Year Treasury Spread
-- `TEDRATE` — TED Spread
-- `T10YIE` — 10-Year Breakeven Inflation Rate
-- `ICSA` — Initial Jobless Claims
-- `CPIAUCSL` — Consumer Price Index (CPI)
-- `BOGZ1FL663067003Q` — Margin Debt
 
 ## FearGreedProvider
 

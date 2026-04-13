@@ -8,6 +8,7 @@ OHLCV price history.  Supports stocks, ETFs, futures, forex and indices.
 
 from __future__ import annotations
 
+import importlib
 import math
 import os
 import sys
@@ -80,7 +81,14 @@ class _YFinancePriceFetcher:
     """Default fetcher backed by the *yfinance* library."""
 
     def __init__(self) -> None:
-        # Check local .deps directory first
+        try:
+            self._yf = importlib.import_module("yfinance")
+            return
+        except ImportError:
+            pass
+
+        # Fall back to a repo-local .deps install if the global environment
+        # does not have yfinance available.
         _deps = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir, ".deps"
         )
@@ -88,14 +96,12 @@ class _YFinancePriceFetcher:
             sys.path.insert(0, _deps)
 
         try:
-            import yfinance  # type: ignore[import-untyped]
+            self._yf = importlib.import_module("yfinance")
         except ImportError:
             raise ImportError(
                 "yfinance is required for YahooPriceProvider but is not installed.\n"
                 "Install it with:  uv pip install --target .deps yfinance\n"
             )
-
-        self._yf = yfinance
 
     def fetch_history(
         self,

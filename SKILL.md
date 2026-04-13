@@ -42,9 +42,8 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Risk ratios: Copper/Gold ratio (risk-off indicator), Gold/Silver ratio
 - CFTC COT: Institutional positioning changes in crude/gold/wheat (which direction is smart money betting)
 - BIS: Central bank policy rate trends in relevant countries
-- FRED: VIX (VIXCLS), MOVE index (MOVE), high-yield spread (BAMLH0A0HYM2), breakeven inflation (T10YIE)
 - FearGreedProvider: CNN Fear & Greed Index (composite of 7 price signals)
-- Web search: Sovereign CDS, war risk premiums, BDI freight rates
+- Web search: VIX, MOVE index, sovereign CDS, war risk premiums, BDI freight rates, high-yield OAS
 - Currencies: Currency pairs of relevant countries (e.g. USDRUB=X, USDCNY=X)
 - Country ETFs: Asset flows in relevant countries (e.g. FXI, EWY)
 
@@ -57,12 +56,11 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - World Bank: GDP growth rate historical trends, cross-country comparisons
 - Deribit: BTC futures basis (risk appetite proxy)
 - CoinGecko: Crypto total market cap + BTC dominance (risk appetite proxy)
-- FRED: VIX (VIXCLS), high-yield OAS (BAMLH0A0HYM2), MOVE (MOVE), TED spread (TEDRATE), 10Y-2Y spread (T10Y2Y), initial claims (ICSA)
 - FearGreedProvider: CNN Fear & Greed Index (7 price signals composite → 0-100)
 - CMEFedWatchProvider: Market-implied FOMC rate change probabilities from futures
 - Polymarket: Recession-related contracts, central bank rate path
 - Currencies: DXY/dollar strength, emerging market currencies
-- Web search: TTF gas, BDI freight rates
+- Web search: High-yield bond spread (HY OAS), TED spread, MOVE index, TTF gas, BDI freight rates
 
 #### Industry cycle / Bubble assessment
 - YahooPriceProvider: Industry leader stock trends, sector ETFs
@@ -72,8 +70,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - EDGAR: Industry leader insider trading cadence (Form 4) — concentrated selling = bearish signal
 - CFTC COT: Institutional positioning changes in related commodities
 - CoinGecko: For crypto industry, look at BTC/ETH/altcoin market cap distribution
-- FRED: Margin debt (BOGZ1FL663067003Q), relevant macro indicators
-- Web search: VC funding concentration, leveraged ETF concentration
+- Web search: VC funding concentration, leveraged ETF concentration, margin debt levels
 - Deribit: Implied volatility of related crypto assets
 
 #### Asset pricing / Whether to buy
@@ -87,8 +84,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Deribit: Crypto options chain (implied volatility = market's expected range)
 - Polymarket/Kalshi: Probability pricing of related events
 - FearGreedProvider: CNN Fear & Greed composite score (momentum, breadth, VIX, put/call, junk bond demand, volatility, safe haven)
-- FRED: VIX (VIXCLS), relevant yield spreads
-- Web search: Corporate bond issuance volume, analyst rating distribution
+- Web search: VIX, corporate bond issuance volume, analyst rating distribution
 
 #### Stock/Options analysis / Crash probability
 - YFinance: Options chain → ATM IV (expected volatility), IV skew (upside/downside fear asymmetry), put/call ratio (bull/bear sentiment), max pain (market maker profit zone), implied move (expected price range), Greeks (delta ≈ ITM probability)
@@ -97,14 +93,23 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - CFTC COT: S&P 500/VIX futures positioning → institutional direction
 - Defensive rotation: XLY (cyclical) vs XLP (defensive) vs XLU (utilities) relative performance → market defensiveness
 - Treasury: Yield curve shape → recession signal
-- FRED: VIX (VIXCLS), margin debt (BOGZ1FL663067003Q)
 - FearGreedProvider: CNN Fear & Greed Index
-- Web search: Leveraged ETF concentration
+- Web search: VIX level, margin debt level, leveraged ETF concentration
 
 **Available trading symbols directory:** See [references/symbols.md](references/symbols.md)
 **Provider API reference:** See [references/providers.md](references/providers.md)
 
-### Step 3: Fetch data
+### Step 3: Signal routing
+
+Before fetching data, evaluate each candidate signal from Step 2 against three criteria:
+
+1. **Relevance**: Can this signal actually answer the user's specific question? (e.g., asking about Taiwan → skip CoinGecko)
+2. **Time match**: Does the signal's pricing horizon match the question's time window? (e.g., asking about 3 months → skip World Bank GDP which lags 1-2 years)
+3. **Information increment**: Does this signal provide an independent perspective not already covered by other signals? Avoid redundancy, keep complementary signals.
+
+Only keep signals that pass all three checks. This reduces noise, saves fetch time, and produces cleaner analysis.
+
+### Step 4: Fetch data
 
 Use digital-oracle's Python providers to fetch structured data, calling all sources in parallel with `gather()` (including web search):
 
@@ -122,7 +127,6 @@ from digital_oracle import (
     BisProvider, BisRateQuery,
     WorldBankProvider, WorldBankQuery,
     YFinanceProvider, OptionsChainQuery,      # requires uv pip install yfinance
-    FredProvider, FredSeriesQuery,
     FearGreedProvider,
     CMEFedWatchProvider,
     gather,
@@ -140,7 +144,6 @@ edgar = EdgarProvider(user_email="you@example.com")  # SEC requires email in Use
 bis = BisProvider()
 wb = WorldBankProvider()
 yf = YFinanceProvider()  # requires uv pip install yfinance
-fred = FredProvider(api_key="YOUR_FRED_API_KEY")  # free at https://fredaccount.stlouisfed.org/apikeys
 fear_greed = FearGreedProvider()
 fedwatch = CMEFedWatchProvider()
 
@@ -164,22 +167,18 @@ result = gather({
     "kalshi_fed": lambda: kalshi.list_markets(KalshiMarketQuery(series_ticker="KXFED", limit=10)),
     # Options chain (with Greeks)
     "spy_options": lambda: yf.get_chain(OptionsChainQuery(ticker="SPY", expiration="2026-04-17")),
-    # FRED economic data (replaces web search for VIX/OAS/MOVE)
-    "vix": lambda: fred.get_series(FredSeriesQuery(series_id="VIXCLS", limit=30)),
-    "hy_spread": lambda: fred.get_series(FredSeriesQuery(series_id="BAMLH0A0HYM2", limit=30)),
-    "move": lambda: fred.get_series(FredSeriesQuery(series_id="MOVE", limit=30)),
-    "t10y2y": lambda: fred.get_series(FredSeriesQuery(series_id="T10Y2Y", limit=30)),
     # CNN Fear & Greed (composite of 7 price signals)
     "fear_greed": lambda: fear_greed.get_index(),
     # CME FedWatch (implied rate probabilities from futures)
     "fedwatch": lambda: fedwatch.get_probabilities(),
-    # Web search for data not in structured providers
-    "cds": lambda: web.search("US sovereign CDS 5 year spread"),
+    # Web search runs in parallel with structured providers
+    "vix": lambda: web.search("VIX index current level"),
+    "hy_spread": lambda: web.search("US high yield bond spread OAS"),
 })
 
 # Partial failures don't affect other results
 curve = result.get("yield_curve")
-vix_info = result.get_or("vix", None)  # WebSearchResult — render with .text()
+vix_info = result.get_or("vix", None)  # WebSearchResult — use .text() to render
 
 # Options data usage
 chain = result.get_or("spy_options", None)
@@ -189,7 +188,7 @@ if chain:
     print(f"Max pain: {chain.max_pain()}")
 ```
 
-**All 15 Providers:**
+**All 14 Providers:**
 
 | Provider | Data Type | Purpose | Dependency |
 |----------|-----------|---------|------------|
@@ -198,50 +197,51 @@ if chain:
 | YahooPriceProvider | Price history | Stocks/ETFs/FX/Commodities | yfinance |
 | DeribitProvider | Crypto derivatives | Futures term structure, options IV | stdlib |
 | USTreasuryProvider | Treasury yields | Yield curves, inflation expectations | stdlib |
-| WebSearchProvider | Web search | CDS/BDI/TTF supplementary data | stdlib |
+| WebSearchProvider | Web search | VIX/MOVE/CDS/BDI supplementary data | stdlib |
 | CftcCotProvider | Futures positioning | Institutional direction (smart money) | stdlib |
 | CoinGeckoProvider | Crypto spot | BTC/ETH price, market cap, dominance | stdlib |
 | EdgarProvider | SEC filings | Insider trades Form 4, filing search | stdlib |
 | BisProvider | Central bank data | Policy rates, credit-to-GDP gap | stdlib |
 | WorldBankProvider | Development indicators | GDP, population, trade, macro data | stdlib |
 | YFinanceProvider | US options chains | IV, Greeks, put/call ratio, max pain | yfinance |
-| **FredProvider** | **Economic time series** | **VIX, OAS, MOVE, yield spreads, CPI** | **stdlib (API key)** |
 | **FearGreedProvider** | **Market sentiment** | **CNN 7-signal composite → 0-100 score** | **stdlib** |
 | **CMEFedWatchProvider** | **Rate probabilities** | **FOMC rate change implied from futures** | **stdlib** |
 
-> 13 out of 15 providers have zero external dependencies. YahooPriceProvider and YFinanceProvider require `pip install yfinance`. FredProvider requires a free API key from https://fredaccount.stlouisfed.org/apikeys.
+> 12 out of 14 providers have zero external dependencies and zero API keys. YahooPriceProvider and YFinanceProvider require `pip install yfinance`.
 
 **WebSearchProvider usage:**
 - `web.search("query")` → returns `WebSearchResult` (search summary) — render with `.text()`
 - `web.fetch_page("url")` → returns `WebPageContent` (page body extraction)
 - Search engine is DuckDuckGo, zero API keys needed
 
-**Data now available via FredProvider (no longer needs web search):** VIX (`VIXCLS`), MOVE (`MOVE`), high-yield OAS (`BAMLH0A0HYM2`), 10Y-2Y spread (`T10Y2Y`), TED spread (`TEDRATE`), breakeven inflation (`T10YIE`), initial claims (`ICSA`), CPI (`CPIAUCSL`), margin debt (`BOGZ1FL663067003Q`).
+**Data not available via structured providers — use web search instead:** VIX, MOVE, CDS spreads, TTF natural gas, BDI freight rates, war risk premiums, high-yield OAS — these need to be fetched from financial web pages. They are still trading data and comply with the methodology.
 
-**Still needs web search:** CDS spreads, TTF natural gas, BDI freight rates, war risk premiums — these need to be fetched from financial web pages.
+### Step 5: Data analysis
 
-### Step 4: Contradiction analysis
+This is the key to report quality. Don't just summarize data — derive judgment from data.
 
-This is the key to report quality. Don't just summarize data — find contradictions:
+Four analysis dimensions:
 
-- **Are different markets saying different things?** e.g. gold says "disaster" but equities say "fine" — explain why both can be right simultaneously
-- **Is there divergence within the same asset class?** e.g. copper up but iron ore down — that divergence itself is a signal
-- **Do short-term and long-term signals contradict?** e.g. defense stocks price a 10-year trend but prediction markets only look 1 year ahead — not a contradiction, different time frames
-- **Does market pricing contradict intuition?** e.g. CNY strengthening while Taiwan Strait risk rises — smart money doesn't believe in near-term conflict
+1. **Signal interpretation**: What is each data point saying? Derive meaning from price. Not "gold up 3%" but "the market is pricing in tail risk." e.g., Copper/Gold ratio declining → industrial demand weaker than safe-haven demand → risk-off.
 
-**Principles when signals diverge:** Don't "vote by majority" — instead:
+2. **Cross-validation**: Which signals point in the same direction (resonance)? Which signals disagree (divergence)? Divergence itself is a high-value signal. e.g., gold says "disaster" but equities say "fine" → two markets pricing different time windows.
 
-1. **Check the time dimension first** — different signals price different future windows:
+3. **Time alignment**: Group signals by their pricing horizon. Don't mix signals from different time windows in the same vote.
    - Short-term (3-12mo): Prediction market contracts, VIX/MOVE, price reaction patterns, executive selling
    - Medium-term (1-3yr): Leader revenue consensus, CapEx plans, VC concentration, leverage concentration
    - Long-term (3-10yr): Equipment maker orders, irreversible capital allocation, ultra-long infrastructure investment
    - Short-term bearish + long-term bullish ≠ contradiction, = S-curve inflection
-2. **Look for "two things happening at once"** — old economy Japanification + new economy boom can coexist in the same economy
-3. **"Direction right but timing wrong"** — long-term signals bullish but short-term overheated → conclusion isn't "buy/don't buy" but "wait for a pullback"
 
-### Step 5: Output report
+4. **Weight judgment**: Not all signals are equally reliable. Signals backed by real money > surveys. Liquid markets > illiquid markets. Direct pricing > indirect proxies. e.g., Polymarket high-liquidity contract > CDS quotes (slow updates, low liquidity).
 
-**Must follow this structure.** You can adjust the number of layers and wording, but the four main sections (data summary, synthesis, probability estimates, signal consistency assessment) cannot be omitted or merged into prose paragraphs:
+**Core principle: Don't vote by majority.** When signals diverge:
+- Check the time dimension first — different signals price different future windows
+- Look for "two things happening at once" — old economy Japanification + new economy boom can coexist
+- Consider "direction right but timing wrong" — long-term bullish but short-term overheated → wait for a pullback
+
+### Step 6: Output report
+
+**Must follow this structure.** You can adjust the number of layers and wording, but the four main sections (data summary, analysis, probability estimates, conclusion) cannot be omitted or merged into prose paragraphs:
 
 ```markdown
 # [Question Title]: Multi-Signal Synthesis
@@ -251,7 +251,7 @@ This is the key to report quality. Don't just summarize data — find contradict
 ### Layer 1: [Most direct signal source]
 | Signal | Data | What it's saying |
 |--------|------|-----------------|
-(table, one signal per row, third column is reasoning)
+(table, one signal per row, third column is reasoning from price to meaning)
 
 ### Layer 2: [Secondary signal source]
 (same format)
@@ -259,14 +259,16 @@ This is the key to report quality. Don't just summarize data — find contradict
 ### Layer N: ...
 (as needed, typically 3-5 layers)
 
-## Synthesis
+## Analysis
 
-### N key contradictions converging:
-**Contradiction 1: [A says X, B says Y]**
-- Data points...
-- Interpretation: why both can be right simultaneously
+### Resonance signals
+(which signals point in the same direction, and what judgment they form)
 
-**Contradiction 2: ...**
+### Key divergences
+(A says X, B says Y → explain why + who is more credible)
+
+### Time stratification
+(what do short-term / medium-term / long-term signals each point to)
 
 ## Probability Estimates
 | Scenario | Probability | Basis |
@@ -275,12 +277,28 @@ This is the key to report quality. Don't just summarize data — find contradict
 ### Most likely path: [one-sentence summary]
 **Core logic chain:** (2-3 paragraphs, reasoning from data to conclusion)
 
-## Signal Consistency Assessment
-| Signal Type | Direction | Confidence |
-|-------------|-----------|------------|
-(assess reliability of each signal)
+## Conclusion
 
-**Conclusion: [one-sentence wrap-up]**
+> [One-sentence summary, preferably including a specific probability estimate]
+
+### Sub-conclusions
+| Dimension | Judgment | Confidence |
+|-----------|----------|------------|
+| Short-term (6-12mo) | ... | High/Medium/Low |
+| Medium-term (1-3yr) | ... | High/Medium/Low |
+| Long-term (3-5yr) | ... | High/Medium/Low |
+| Systemic risk | ... | High/Medium/Low |
+(adjust dimensions to match the question — e.g., replace "systemic risk" with whatever dimension is most relevant)
+
+### Risk factors
+- **Upside risk:** what scenario would make things better than expected
+- **Downside risk:** what scenario would make things worse than expected
+
+### Signals to monitor
+| Signal | Current value | Threshold | Meaning |
+|--------|--------------|-----------|---------|
+| ... | ... | if crosses X | then Y |
+(3-5 concrete signals with specific trigger levels and what they would imply)
 
 ---
 *Data sources: [list all structured and web data sources]*
@@ -307,7 +325,6 @@ This is the key to report quality. Don't just summarize data — find contradict
 - Max pain is the strike price maximizing market maker profit — actual expiration price often converges toward max pain
 - Kalshi does NOT support keyword search — use `series_ticker` or `event_ticker` to filter markets. Find tickers by browsing [kalshi.com](https://kalshi.com) or listing markets without filters first. Common series: `KXFED` (Fed rates), `KXINX` (S&P 500 range), `KXGDP` (GDP)
 - Deribit futures method is `get_futures_term_structure()`, not `get_futures_curve()`. Option chain method is `get_option_chain()`
-- FredProvider requires a free API key — register at https://fredaccount.stlouisfed.org/apikeys. Common series: `VIXCLS` (VIX), `BAMLH0A0HYM2` (HY OAS), `MOVE` (bond volatility), `T10Y2Y` (10Y-2Y spread), `TEDRATE` (TED spread), `T10YIE` (breakeven inflation), `ICSA` (initial claims), `CPIAUCSL` (CPI). Use `search_series()` to find others among 840K+ series
 - FearGreedProvider has no API key requirement. Returns a single composite score (0-100) synthesizing 7 market price signals: stock momentum, breadth, VIX, put/call ratio, junk bond demand, volatility, safe haven demand. Score < 25 = Extreme Fear, > 75 = Extreme Greed
 - CMEFedWatchProvider has no API key requirement. Returns implied rate change probabilities for upcoming FOMC meetings, derived from 30-day Fed Funds futures prices. Note: the CME endpoint may occasionally be unavailable or change format — if it fails, fall back to Kalshi `KXFED` series for rate probabilities
 - When reporting dollar amounts, use `USD` instead of `$` to avoid markdown renderers interpreting `$...$` as LaTeX
