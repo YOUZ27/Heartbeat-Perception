@@ -68,7 +68,7 @@ class BisProvider(SignalProvider):
     def get_credit_to_gdp(self, query: BisCreditGapQuery | None = None) -> list[BisCreditGap]:
         query = query or BisCreditGapQuery()
         country_codes = "+".join(query.countries)
-        url = f"{BIS_BASE_URL}/data/WS_CREDIT_GAP/Q.{country_codes}.C:G:P"
+        url = f"{BIS_BASE_URL}/data/WS_CREDIT_GAP/Q.{country_codes}"
         payload = self.http_client.get_text(
             url,
             params={
@@ -112,12 +112,15 @@ class BisProvider(SignalProvider):
         if not reader.fieldnames:
             raise ProviderParseError("BIS credit gap CSV has no headers")
 
-        required = {"REF_AREA", "TIME_PERIOD", "OBS_VALUE"}
+        required = {"TIME_PERIOD", "OBS_VALUE"}
         if not required.issubset(set(reader.fieldnames)):
             raise ProviderParseError(
                 f"BIS credit gap CSV missing required columns; "
                 f"expected {required}, got {reader.fieldnames}"
             )
+
+        # BIS uses REF_AREA or BORROWERS_CTY depending on the dataset version
+        country_col = "REF_AREA" if "REF_AREA" in reader.fieldnames else "BORROWERS_CTY"
 
         gaps: list[BisCreditGap] = []
         for row in reader:
@@ -128,7 +131,7 @@ class BisProvider(SignalProvider):
                 continue
             gaps.append(
                 BisCreditGap(
-                    country=row["REF_AREA"],
+                    country=row.get(country_col, ""),
                     period=row["TIME_PERIOD"],
                     gap_pct=value,
                 )

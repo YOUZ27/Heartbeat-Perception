@@ -32,13 +32,20 @@ class FearGreedSnapshot:
     one_year_ago: float | None
 
 
+_BROWSER_HEADERS = {
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Referer": "https://edition.cnn.com/",
+}
+
+
 class FearGreedProvider(SignalProvider):
     provider_id = "fear_greed"
     display_name = "CNN Fear & Greed Index"
     capabilities = ("market_sentiment",)
 
     def __init__(self, http_client: JsonHttpClient | None = None) -> None:
-        self.http_client = http_client or UrllibJsonClient()
+        self.http_client = http_client or UrllibJsonClient(headers=_BROWSER_HEADERS)
 
     def get_index(self) -> FearGreedSnapshot:
         data = self.http_client.get_json(_URL)
