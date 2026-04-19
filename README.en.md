@@ -109,4 +109,4 @@ digital-oracle/
 
 ## License
 
-MIT
+MIT © 2026 komako-workshop — see [LICENSE](LICENSE).
