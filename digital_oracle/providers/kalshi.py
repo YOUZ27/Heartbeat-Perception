@@ -177,6 +177,12 @@ class KalshiOrderBook:
             return None
         return (self.best_yes_bid + self.best_yes_ask) / 2.0
 
+    @property
+    def arbitrage_consistent(self) -> bool | None:
+        if self.best_yes_bid is None or self.best_no_bid is None:
+            return None
+        return (self.best_yes_bid + self.best_no_bid) <= 1.0 + 1e-6
+
 
 class KalshiProvider(SignalProvider):
     provider_id = "kalshi"

@@ -83,6 +83,14 @@ from .providers import (
 )
 from .concurrent import GatherError, GatherResult, gather
 from .snapshots import RecordingHttpClient, ReplayHttpClient, SnapshotMissError
+from .combination import CombinedProbability, linear_pool, logarithmic_pool
+from .signal_quality import (
+    ProbabilityMeasure,
+    PROBABILITY_PHYSICAL,
+    PROBABILITY_RISK_NEUTRAL,
+    PROBABILITY_NAIVE_MIDPOINT,
+    SignalQuality,
+)
 
 __all__ = [
     "BisCreditGap",
@@ -172,4 +180,12 @@ __all__ = [
     "OptionsChainQuery",
     "OptionsExpirations",
     "black_scholes_greeks",
+    "CombinedProbability",
+    "linear_pool",
+    "logarithmic_pool",
+    "ProbabilityMeasure",
+    "PROBABILITY_PHYSICAL",
+    "PROBABILITY_RISK_NEUTRAL",
+    "PROBABILITY_NAIVE_MIDPOINT",
+    "SignalQuality",
 ]

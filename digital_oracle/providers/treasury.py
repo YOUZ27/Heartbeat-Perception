@@ -107,6 +107,43 @@ class YieldCurveSnapshot:
             return None
         return long_rate - short_rate
 
+    @property
+    def is_inverted(self) -> bool | None:
+        s = self.spread("10Y", "2Y")
+        if s is None:
+            return None
+        return s < 0
+
+    @property
+    def inversion_depth_bps(self) -> float | None:
+        s = self.spread("10Y", "2Y")
+        if s is None:
+            return None
+        return max(-s * 100, 0.0)
+
+    @property
+    def steepness_bps(self) -> float | None:
+        s = self.spread("30Y", "2Y")
+        if s is None:
+            return None
+        return s * 100
+
+    @property
+    def short_rate(self) -> float | None:
+        for tenor in ("3M", "2M", "1M"):
+            v = self.yield_for(tenor)
+            if v is not None:
+                return v
+        return None
+
+    @property
+    def long_rate(self) -> float | None:
+        for tenor in ("30Y", "20Y", "10Y"):
+            v = self.yield_for(tenor)
+            if v is not None:
+                return v
+        return None
+
 
 @dataclass(frozen=True)
 class YieldCurveQuery:

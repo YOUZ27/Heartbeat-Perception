@@ -100,6 +100,10 @@ class KalshiProviderTests(unittest.TestCase):
         assert params is not None
         self.assertEqual(params["depth"], 10)
 
+    def test_orderbook_arbitrage_consistency(self) -> None:
+        book = self.provider.get_order_book("KXFED-27APR-T4.25", depth=10)
+        self.assertTrue(book.arbitrage_consistent)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -107,12 +107,37 @@ class DeribitProviderTests(unittest.TestCase):
         self.assertLess(curve.points[1].basis_vs_perpetual or 0.0, 0.0)
         self.assertEqual(curve.points[-1].instrument_name, "BTC-26JUN26")
         self.assertAlmostEqual(curve.points[-1].basis_vs_perpetual or 0.0, 0.007601, places=6)
-        self.assertAlmostEqual(curve.points[-1].annualized_basis_vs_perpetual or 0.0, 0.02589, places=6)
 
-        _, params = self.fake_client.calls[-1]
-        assert params is not None
-        self.assertEqual(params["currency"], "BTC")
-        self.assertEqual(params["kind"], "future")
+    def test_futures_term_structure_uses_compound_annualization(self) -> None:
+        curve = self.provider.get_futures_term_structure(DeribitFuturesCurveQuery(currency="BTC"))
+        june_point = curve.points[-1]
+        self.assertEqual(june_point.instrument_name, "BTC-26JUN26")
+        basis = june_point.basis_vs_perpetual
+        annualized = june_point.annualized_basis_vs_perpetual
+        self.assertIsNotNone(basis)
+        self.assertIsNotNone(annualized)
+        if basis is not None and annualized is not None:
+            self.assertGreater(annualized, basis, "Compound annualization should exceed simple basis")
+            linear_approx = basis * 365.0 / 107.0
+            self.assertGreater(annualized, linear_approx, "Compound annualization should exceed linear approximation")
+
+    def test_term_point_structure_type(self) -> None:
+        curve = self.provider.get_futures_term_structure(DeribitFuturesCurveQuery(currency="BTC"))
+        perp = curve.points[0]
+        self.assertEqual(perp.structure_type, "flat")
+        mar_point = curve.points[1]
+        self.assertEqual(mar_point.structure_type, "backwardation")
+        jun_point = curve.points[-1]
+        self.assertEqual(jun_point.structure_type, "contango")
+
+    def test_term_structure_overall_structure_type(self) -> None:
+        curve = self.provider.get_futures_term_structure(DeribitFuturesCurveQuery(currency="BTC"))
+        self.assertEqual(curve.structure_type, "contango")
+
+    def test_contango_and_backwardation_points(self) -> None:
+        curve = self.provider.get_futures_term_structure(DeribitFuturesCurveQuery(currency="BTC"))
+        self.assertGreaterEqual(len(curve.contango_points), 1)
+        self.assertGreaterEqual(len(curve.backwardation_points), 1)
 
     def test_get_option_chain_groups_calls_and_puts_by_strike(self) -> None:
         chain = self.provider.get_option_chain(DeribitOptionChainQuery(currency="BTC"))

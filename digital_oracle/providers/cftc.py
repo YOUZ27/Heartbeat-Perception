@@ -66,6 +66,27 @@ class CftcCotReport:
         """Net commercial (producer/merchant) position."""
         return self.prod_long - self.prod_short
 
+    @property
+    def smart_money_direction(self) -> str:
+        if self.mm_net > 0:
+            return "bullish"
+        if self.mm_net < 0:
+            return "bearish"
+        return "neutral"
+
+    @property
+    def commercial_hedge_intensity(self) -> float:
+        total = self.prod_long + self.prod_short
+        if self.open_interest == 0:
+            return 0.0
+        return total / self.open_interest
+
+    @property
+    def speculative_ratio(self) -> float:
+        if self.open_interest == 0:
+            return 0.0
+        return abs(self.mm_net) / self.open_interest
+
 
 def _parse_report(record: Mapping[str, Any]) -> CftcCotReport:
     raw_date = _coerce_str(record.get("report_date_as_yyyy_mm_dd"))

@@ -40,6 +40,7 @@ class OptionGreeks:
     gamma: float
     theta: float  # per calendar day
     vega: float  # per 1% move in IV
+    model: str = "black_scholes"
 
 
 def black_scholes_greeks(
@@ -88,7 +89,7 @@ def black_scholes_greeks(
             + r * K * math.exp(-r * T) * _norm_cdf(-d2)
         ) / 365.0
 
-    return OptionGreeks(delta=delta, gamma=gamma, theta=theta, vega=vega)
+    return OptionGreeks(delta=delta, gamma=gamma, theta=theta, vega=vega, model="black_scholes")
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +262,36 @@ class OptionsChain:
                 max_pain_strike = test_strike
 
         return max_pain_strike
+
+    def iv_skew(self, delta_target: float = 0.25) -> float | None:
+        """IV skew: OTM put IV minus OTM call IV at similar delta.
+
+        Positive skew = downside fear exceeds upside fear.
+        Uses delta_target (default 0.25) to select comparable OTM contracts.
+        """
+        otm_put_ivs = [
+            p.implied_volatility
+            for p in self.puts
+            if p.implied_volatility is not None
+            and p.greeks is not None
+            and p.greeks.delta is not None
+            and p.greeks.delta > -delta_target - 0.1
+            and p.greeks.delta < -delta_target + 0.1
+        ]
+        otm_call_ivs = [
+            c.implied_volatility
+            for c in self.calls
+            if c.implied_volatility is not None
+            and c.greeks is not None
+            and c.greeks.delta is not None
+            and c.greeks.delta > delta_target - 0.1
+            and c.greeks.delta < delta_target + 0.1
+        ]
+        if not otm_put_ivs or not otm_call_ivs:
+            return None
+        avg_put_iv = sum(otm_put_ivs) / len(otm_put_ivs)
+        avg_call_iv = sum(otm_call_ivs) / len(otm_call_ivs)
+        return avg_put_iv - avg_call_iv
 
 
 # ---------------------------------------------------------------------------

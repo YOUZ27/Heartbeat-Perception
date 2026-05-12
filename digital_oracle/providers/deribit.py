@@ -161,6 +161,18 @@ class DeribitFutureTermPoint:
     annualized_basis_vs_perpetual: float | None
     raw: Mapping[str, Any] = field(default_factory=dict, repr=False)
 
+    @property
+    def structure_type(self) -> str | None:
+        if self.basis_vs_perpetual is None:
+            return None
+        if self.is_perpetual:
+            return "flat"
+        if self.basis_vs_perpetual > 0.0001:
+            return "contango"
+        if self.basis_vs_perpetual < -0.0001:
+            return "backwardation"
+        return "flat"
+
 
 @dataclass
 class DeribitFuturesTermStructure:
@@ -173,6 +185,29 @@ class DeribitFuturesTermStructure:
             if point.is_perpetual:
                 return point
         return None
+
+    @property
+    def structure_type(self) -> str | None:
+        non_perp = [p for p in self.points if not p.is_perpetual]
+        if not non_perp:
+            return None
+        bases = [p.basis_vs_perpetual for p in non_perp if p.basis_vs_perpetual is not None]
+        if not bases:
+            return None
+        avg_basis = sum(bases) / len(bases)
+        if avg_basis > 0.0001:
+            return "contango"
+        if avg_basis < -0.0001:
+            return "backwardation"
+        return "flat"
+
+    @property
+    def contango_points(self) -> tuple[DeribitFutureTermPoint, ...]:
+        return tuple(p for p in self.points if p.structure_type == "contango")
+
+    @property
+    def backwardation_points(self) -> tuple[DeribitFutureTermPoint, ...]:
+        return tuple(p for p in self.points if p.structure_type == "backwardation")
 
 
 @dataclass
@@ -481,7 +516,9 @@ class DeribitProvider(SignalProvider):
                     ms_to_expiry = instrument.expiration_timestamp - generated_timestamp_ms
                     if ms_to_expiry > 0:
                         days_to_expiry = ms_to_expiry / 86_400_000
-                        annualized_basis_vs_perpetual = basis_vs_perpetual * 365.0 / days_to_expiry
+                        ratio = reference_price / perpetual_reference_price
+                        if ratio > 0:
+                            annualized_basis_vs_perpetual = ratio ** (365.0 / days_to_expiry) - 1.0
 
         return DeribitFutureTermPoint(
             instrument_name=instrument.instrument_name,

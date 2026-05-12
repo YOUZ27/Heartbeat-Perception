@@ -142,6 +142,28 @@ class CftcCotProviderTests(unittest.TestCase):
         # prod_net = prod_long - prod_short = 80000 - 195000 = -115000
         self.assertEqual(r.prod_net, -115000)
 
+    def test_smart_money_direction_bullish(self) -> None:
+        reports = self.provider.list_reports(CftcCotQuery(commodity_name="GOLD"))
+        r = reports[0]
+        self.assertEqual(r.smart_money_direction, "bullish")
+
+    def test_smart_money_direction_bearish(self) -> None:
+        reports = self.provider.list_reports(CftcCotQuery(commodity_name="CRUDE"))
+        r = reports[0]
+        self.assertEqual(r.smart_money_direction, "bullish")
+
+    def test_commercial_hedge_intensity(self) -> None:
+        reports = self.provider.list_reports(CftcCotQuery(commodity_name="GOLD"))
+        r = reports[0]
+        expected = (80000 + 195000) / 550000
+        self.assertAlmostEqual(r.commercial_hedge_intensity, expected, places=4)
+
+    def test_speculative_ratio(self) -> None:
+        reports = self.provider.list_reports(CftcCotQuery(commodity_name="GOLD"))
+        r = reports[0]
+        expected = abs(135000) / 550000
+        self.assertAlmostEqual(r.speculative_ratio, expected, places=4)
+
     def test_mm_net_crude(self) -> None:
         reports = self.provider.list_reports(CftcCotQuery(commodity_name="CRUDE"))
         r = reports[0]

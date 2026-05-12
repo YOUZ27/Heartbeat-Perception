@@ -61,6 +61,30 @@ class USTreasuryProviderTests(unittest.TestCase):
         self.assertAlmostEqual(latest.spread("10Y", "2Y") or 0.0, 0.58)
         self.assertAlmostEqual(latest.spread("30Y", "10Y") or 0.0, 0.63)
 
+    def test_yield_curve_is_inverted(self) -> None:
+        latest = self.provider.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="nominal"))
+        assert latest is not None
+        self.assertFalse(latest.is_inverted)
+
+    def test_yield_curve_inversion_depth(self) -> None:
+        latest = self.provider.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="nominal"))
+        assert latest is not None
+        self.assertAlmostEqual(latest.inversion_depth_bps or 0.0, 0.0)
+
+    def test_yield_curve_steepness(self) -> None:
+        latest = self.provider.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="nominal"))
+        assert latest is not None
+        steepness = latest.steepness_bps
+        self.assertIsNotNone(steepness)
+        if steepness is not None:
+            self.assertAlmostEqual(steepness, 121.0, places=0)
+
+    def test_yield_curve_short_and_long_rate(self) -> None:
+        latest = self.provider.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="nominal"))
+        assert latest is not None
+        self.assertIsNotNone(latest.short_rate)
+        self.assertIsNotNone(latest.long_rate)
+
     def test_real_curve_normalizes_uppercase_tenors(self) -> None:
         latest = self.provider.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="real"))
 
