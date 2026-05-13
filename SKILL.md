@@ -1,11 +1,12 @@
----
-name: digital-oracle
+***
+
+name: Heartbeat-Perception
 version: 1.0.4
 description: "Answer prediction questions using market trading data, not opinions. Use when the user asks probability questions about geopolitics, economics, markets, industries, or any topic where real money is being traded on the outcome. Examples: 'What's the probability of WW3?', 'Will there be a recession?', 'Is AI in a bubble?', 'When will the Russia-Ukraine war end?', 'Is it a good time to buy gold?', 'Will SPY drop 5% this month?', 'Is NVDA options premium overpriced?'. The skill reads prices from prediction markets, commodities, equities, options chains, derivatives, yield curves, and currencies, then cross-validates multiple signals to produce a structured probability report."
-metadata: { "openclaw": { "emoji": "📈", "requires": { "bins": ["uv"] } } }
----
+metadata: { "openclaw": { "emoji": "📈", "requires": { "bins": \["uv"] } } }
+----------------------------------------------------------------------------
 
-# digital-oracle
+# Heartbeat-Perception
 
 > Markets are efficient. Price contains all public information. Reading price = reading market consensus.
 
@@ -26,6 +27,7 @@ Five iron rules:
 ### Step 1: Understand the question
 
 Decompose the user's question into:
+
 - **Core variable**: What event or trend?
 - **Time window**: Is the user asking about 3 months, 1 year, or 5 years?
 - **Priceability**: Is there real money being traded on this outcome?
@@ -35,6 +37,7 @@ Decompose the user's question into:
 Based on question type, select from the signal menu below. **Don't use just one category — cover at least 3.**
 
 #### Geopolitical conflict / War risk
+
 - Polymarket: Search for related event contracts (ceasefire, invasion, regime change, declaration of war)
 - Kalshi: Search for related binary contracts
 - Safe-haven assets: Gold (GC=F), silver (SI=F), Swiss franc (USDCHF=X)
@@ -48,6 +51,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Country ETFs: Asset flows in relevant countries (e.g. FXI, EWY)
 
 #### Economic recession / Macro cycle
+
 - Treasury: Yield curve shape (10Y-2Y spread, 10Y-3M spread), real rates, breakeven inflation
 - YahooPriceProvider: SPY, copper (HG=F), crude oil (CL=F), price trends
 - Risk ratios: Copper/Gold ratio
@@ -63,6 +67,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Web search: High-yield bond spread (HY OAS), TED spread, MOVE index, TTF gas, BDI freight rates
 
 #### Industry cycle / Bubble assessment
+
 - YahooPriceProvider: Industry leader stock trends, sector ETFs
 - Find the industry's "single-purpose commodity" (e.g. GPU rental price → AI, rebar → construction)
 - Upstream equipment maker orders/stock price (e.g. ASML → semiconductors)
@@ -74,6 +79,7 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Deribit: Implied volatility of related crypto assets
 
 #### Asset pricing / Whether to buy
+
 - YahooPriceProvider: Target asset price trend (daily/weekly/monthly)
 - Relative price changes of correlated assets (divergence between two commodities = structural signal)
 - Treasury: Risk-free rate as valuation anchor
@@ -87,10 +93,11 @@ Based on question type, select from the signal menu below. **Don't use just one 
 - Web search: VIX, corporate bond issuance volume, analyst rating distribution
 
 #### Stock/Options analysis / Crash probability
+
 - YFinanceProvider: Options chain → ATM IV (expected volatility), IV skew (upside/downside fear asymmetry), put/call ratio (bull/bear sentiment), max pain (market maker profit zone), implied move (expected price range), Greeks via `black_scholes_greeks()` (delta ≈ ITM probability, gamma, theta, vega)
 - YahooPriceProvider: Underlying historical price → realized volatility (compare vs implied volatility to judge options premium)
 - Kalshi: SPY/NASDAQ price range markets → direct probability pricing
-- CFTC COT: S&P 500/VIX futures positioning → institutional direction (use `smart_money_direction`, `commercial_hedge_intensity`)
+- CFTC COT: S\&P 500/VIX futures positioning → institutional direction (use `smart_money_direction`, `commercial_hedge_intensity`)
 - Defensive rotation: XLY (cyclical) vs XLP (defensive) vs XLU (utilities) relative performance → market defensiveness
 - Treasury: Yield curve shape → recession signal
 - FearGreedProvider: CNN Fear & Greed Index
@@ -111,7 +118,7 @@ Only keep signals that pass all three checks. This reduces noise, saves fetch ti
 
 ### Step 4: Fetch data
 
-Use digital-oracle's Python providers to fetch structured data, calling all sources in parallel with `gather()` (including web search):
+Use Heartbeat-Perception's Python providers to fetch structured data, calling all sources in parallel with `gather()` (including web search):
 
 ```python
 from digital_oracle import (
@@ -261,22 +268,22 @@ if btc_chain:
 
 **All 14 Providers:**
 
-| Provider | Data Type | Purpose | Dependency |
-|----------|-----------|---------|------------|
-| PolymarketProvider | Prediction market contracts | Event probability pricing | stdlib |
-| KalshiProvider | Binary contracts | US regulated event contracts | stdlib |
-| YahooPriceProvider | Price history | Stocks/ETFs/FX/Commodities | yfinance |
-| DeribitProvider | Crypto derivatives | Futures term structure, options IV, order book | stdlib |
-| USTreasuryProvider | Treasury yields + exchange rates | Yield curves, inflation expectations, fiscal FX rates | stdlib |
-| WebSearchProvider | Web search + page fetch | VIX/MOVE/CDS/BDI supplementary data | stdlib |
-| CftcCotProvider | Futures positioning | Institutional direction (smart money) | stdlib |
-| CoinGeckoProvider | Crypto spot + global + rankings | BTC/ETH price, market cap, dominance, market rankings | stdlib |
-| EdgarProvider | SEC filings + full-text search | Insider trades Form 4, keyword filing search | stdlib |
-| BisProvider | Central bank data | Policy rates, credit-to-GDP gap | stdlib |
-| WorldBankProvider | Development indicators | GDP, population, trade, macro data | stdlib |
-| YFinanceProvider | US options chains + Greeks | IV, Greeks (delta/gamma/theta/vega), put/call ratio, max pain, IV skew | yfinance |
-| FearGreedProvider | Market sentiment | CNN 7-signal composite → 0-100 score | stdlib |
-| CMEFedWatchProvider | Rate probabilities | FOMC rate change implied from futures | stdlib |
+| Provider            | Data Type                        | Purpose                                                                | Dependency |
+| ------------------- | -------------------------------- | ---------------------------------------------------------------------- | ---------- |
+| PolymarketProvider  | Prediction market contracts      | Event probability pricing                                              | stdlib     |
+| KalshiProvider      | Binary contracts                 | US regulated event contracts                                           | stdlib     |
+| YahooPriceProvider  | Price history                    | Stocks/ETFs/FX/Commodities                                             | yfinance   |
+| DeribitProvider     | Crypto derivatives               | Futures term structure, options IV, order book                         | stdlib     |
+| USTreasuryProvider  | Treasury yields + exchange rates | Yield curves, inflation expectations, fiscal FX rates                  | stdlib     |
+| WebSearchProvider   | Web search + page fetch          | VIX/MOVE/CDS/BDI supplementary data                                    | stdlib     |
+| CftcCotProvider     | Futures positioning              | Institutional direction (smart money)                                  | stdlib     |
+| CoinGeckoProvider   | Crypto spot + global + rankings  | BTC/ETH price, market cap, dominance, market rankings                  | stdlib     |
+| EdgarProvider       | SEC filings + full-text search   | Insider trades Form 4, keyword filing search                           | stdlib     |
+| BisProvider         | Central bank data                | Policy rates, credit-to-GDP gap                                        | stdlib     |
+| WorldBankProvider   | Development indicators           | GDP, population, trade, macro data                                     | stdlib     |
+| YFinanceProvider    | US options chains + Greeks       | IV, Greeks (delta/gamma/theta/vega), put/call ratio, max pain, IV skew | yfinance   |
+| FearGreedProvider   | Market sentiment                 | CNN 7-signal composite → 0-100 score                                   | stdlib     |
+| CMEFedWatchProvider | Rate probabilities               | FOMC rate change implied from futures                                  | stdlib     |
 
 > 12 out of 14 providers have zero external dependencies and zero API keys. YahooPriceProvider and YFinanceProvider require `pip install yfinance`.
 
@@ -287,20 +294,18 @@ This is the key to report quality. Don't just summarize data — derive judgment
 Four analysis dimensions:
 
 1. **Signal interpretation**: What is each data point saying? Derive meaning from price. Not "gold up 3%" but "the market is pricing in tail risk." e.g., Copper/Gold ratio declining → industrial demand weaker than safe-haven demand → risk-off.
-
 2. **Cross-validation**: Which signals point in the same direction (resonance)? Which signals disagree (divergence)? Divergence itself is a high-value signal. e.g., gold says "disaster" but equities say "fine" → two markets pricing different time windows.
-
 3. **Time alignment**: Group signals by their pricing horizon. Don't mix signals from different time windows in the same vote.
    - Short-term (3-12mo): Prediction market contracts, VIX/MOVE, price reaction patterns, executive selling
    - Medium-term (1-3yr): Leader revenue consensus, CapEx plans, VC concentration, leverage concentration
    - Long-term (3-10yr): Equipment maker orders, irreversible capital allocation, ultra-long infrastructure investment
    - Short-term bearish + long-term bullish ≠ contradiction, = S-curve inflection
-
 4. **Weight judgment**: Not all signals are equally reliable. Signals backed by real money > surveys. Liquid markets > illiquid markets. Direct pricing > indirect proxies. e.g., Polymarket high-liquidity contract > CDS quotes (slow updates, low liquidity).
 
-**Probability combination tools:** Use `linear_pool()` (weighted average) or `logarithmic_pool()` (geometric mean of odds ratios, naturally down-weights divergent signals) to synthesize probabilities from multiple sources into a single estimate with a confidence score. See [signal_quality.py] for `SignalQuality` assessment and probability measure classification (`PROBABILITY_PHYSICAL` vs `PROBABILITY_RISK_NEUTRAL` vs `PROBABILITY_NAIVE_MIDPOINT`).
+**Probability combination tools:** Use `linear_pool()` (weighted average) or `logarithmic_pool()` (geometric mean of odds ratios, naturally down-weights divergent signals) to synthesize probabilities from multiple sources into a single estimate with a confidence score. See \[signal\_quality.py] for `SignalQuality` assessment and probability measure classification (`PROBABILITY_PHYSICAL` vs `PROBABILITY_RISK_NEUTRAL` vs `PROBABILITY_NAIVE_MIDPOINT`).
 
 **Core principle: Don't vote by majority.** When signals diverge:
+
 - Check the time dimension first — different signals price different future windows
 - Look for "two things happening at once" — old economy Japanification + new economy boom can coexist
 - Consider "direction right but timing wrong" — long-term bullish but short-term overheated → wait for a pullback
@@ -379,11 +384,11 @@ Four analysis dimensions:
 - European stocks available on Yahoo Finance with exchange suffix (e.g. `RHM.DE` for Rheinmetall, `BA.L` for BAE Systems)
 - Prediction market contracts vary in liquidity — contracts with volume < USD 100K should be discounted
 - Different signals update at different frequencies: prediction markets real-time, Yahoo Finance daily delayed, Treasury weekly
-- CFTC COT updates Tuesday, published Friday. commodity_name uses uppercase ("GOLD", "CRUDE OIL", "S&P 500")
-- CftcCotReport provides computed properties: `mm_net` (speculative net position), `prod_net` (commercial net position), `smart_money_direction` ("bullish"/"bearish"/"neutral"), `commercial_hedge_intensity` (fraction of OI), `speculative_ratio` (|mm_net|/OI)
-- CoinGecko free API has rate limits (~10-30 req/min) — don't pack too many CoinGecko calls in gather. Use `get_global()` for macro overview (total market cap, BTC/ETH dominance), `list_markets()` for market cap rankings, `get_prices()` for specific coin data
+- CFTC COT updates Tuesday, published Friday. commodity\_name uses uppercase ("GOLD", "CRUDE OIL", "S\&P 500")
+- CftcCotReport provides computed properties: `mm_net` (speculative net position), `prod_net` (commercial net position), `smart_money_direction` ("bullish"/"bearish"/"neutral"), `commercial_hedge_intensity` (fraction of OI), `speculative_ratio` (|mm\_net|/OI)
+- CoinGecko free API has rate limits (\~10-30 req/min) — don't pack too many CoinGecko calls in gather. Use `get_global()` for macro overview (total market cap, BTC/ETH dominance), `list_markets()` for market cap rankings, `get_prices()` for specific coin data
 - EDGAR requires `EdgarProvider(user_email="you@example.com")` — SEC requires email in User-Agent, otherwise 403. First call parses ticker→CIK mapping, slightly slow. Use `search_filings(EdgarSearchQuery(...))` for keyword-based full-text search across SEC filings with optional form type and date filters
-- BIS data updates infrequently (monthly/quarterly) — suitable for long-term trends, not short-term trading. `get_credit_to_gdp(BisCreditGapQuery(...))` returns credit-to-GDP gap: gap_pct > 10 = credit overheating warning (BIS threshold)
+- BIS data updates infrequently (monthly/quarterly) — suitable for long-term trends, not short-term trading. `get_credit_to_gdp(BisCreditGapQuery(...))` returns credit-to-GDP gap: gap\_pct > 10 = credit overheating warning (BIS threshold)
 - World Bank GDP data typically lags 1-2 years — latest year may return `None`
 - YFinance requires `uv pip install yfinance` (auto-installs pandas). After-hours IV may be inaccurate (bid/ask = 0) — use during market hours
 - YFinance `get_chain()` auto-computes Black-Scholes Greeks (pure stdlib `math.erf`, no scipy needed). Use `black_scholes_greeks(S, K, T, r, sigma, option_type)` standalone for custom pricing. Greeks include: delta (≈ P(ITM)), gamma (delta sensitivity), theta (daily decay), vega (per 1pp IV change)
@@ -391,13 +396,14 @@ Four analysis dimensions:
 - Absolute value of put delta ≈ probability of that strike being ITM at expiration (rough estimate)
 - Put/Call ratio > 1.5 is typically bearish, but as a contrarian indicator, extreme values (> 3) may signal a bottom
 - Max pain is the strike price maximizing market maker profit — actual expiration price often converges toward max pain
-- Kalshi does NOT support keyword search — use `series_ticker` or `event_ticker` to filter markets. Find tickers by browsing [kalshi.com](https://kalshi.com) or listing markets without filters first. Common series: `KXFED` (Fed rates), `KXINX` (S&P 500 range), `KXGDP` (GDP). Order book supports dual format parsing (`orderbook_fp` and `orderbook`) with automatic cents-unit fallback
-- Deribit futures method is `get_futures_term_structure()`, not `get_futures_curve()`. Option chain method is `get_option_chain(DeribitOptionChainQuery(currency="BTC", expiration_label="27MAR26"))` — omit expiration_label for nearest expiry. DeribitBookSummary includes `mark_iv` for implied volatility
+- Kalshi does NOT support keyword search — use `series_ticker` or `event_ticker` to filter markets. Find tickers by browsing [kalshi.com](https://kalshi.com) or listing markets without filters first. Common series: `KXFED` (Fed rates), `KXINX` (S\&P 500 range), `KXGDP` (GDP). Order book supports dual format parsing (`orderbook_fp` and `orderbook`) with automatic cents-unit fallback
+- Deribit futures method is `get_futures_term_structure()`, not `get_futures_curve()`. Option chain method is `get_option_chain(DeribitOptionChainQuery(currency="BTC", expiration_label="27MAR26"))` — omit expiration\_label for nearest expiry. DeribitBookSummary includes `mark_iv` for implied volatility
 - DeribitFuturesTermStructure provides: `structure_type` ("contango"/"backwardation"/"flat"), `perpetual()`, `contango_points`, `backwardation_points`. Each DeribitFutureTermPoint includes `basis_vs_perpetual` and `annualized_basis_vs_perpetual`
 - FearGreedProvider has no API key requirement. Returns a single composite score (0-100) synthesizing 7 market price signals: stock momentum, breadth, VIX, put/call ratio, junk bond demand, volatility, safe haven demand. Score < 25 = Extreme Fear, > 75 = Extreme Greed. Also includes `previous_close`, `one_week_ago`, `one_month_ago`, `one_year_ago` for trend analysis
-- CMEFedWatchProvider has no API key requirement. Returns implied rate change probabilities for upcoming FOMC meetings, derived from 30-day Fed Funds futures prices. Note: the CME endpoint may occasionally be unavailable or change format — if it fails, fall back to Kalshi `KXFED` series for rate probabilities. Response parsing is resilient to multiple JSON shapes (list, nested object, snake_case/camelCase)
+- CMEFedWatchProvider has no API key requirement. Returns implied rate change probabilities for upcoming FOMC meetings, derived from 30-day Fed Funds futures prices. Note: the CME endpoint may occasionally be unavailable or change format — if it fails, fall back to Kalshi `KXFED` series for rate probabilities. Response parsing is resilient to multiple JSON shapes (list, nested object, snake\_case/camelCase)
 - WebSearchProvider uses DuckDuckGo (zero API keys), with global rate limiting (serialised requests, 2s minimum interval), CAPTCHA detection with retry/backoff (up to 3 attempts), and regex fallback parser for DDG result extraction
 - WebSearchProvider `search()` accepts both a string and `WebSearchQuery(query=..., max_results=5)`. `WebSearchResult.text()` renders results as readable text for LLM consumption. `fetch_page(WebPageQuery(url=..., max_chars=8000))` extracts text content from any URL with configurable truncation
-- USTreasuryProvider now supports `list_exchange_rates(ExchangeRateQuery(...))` for Treasury fiscal exchange rate data (country, currency, record_date filters)
+- USTreasuryProvider now supports `list_exchange_rates(ExchangeRateQuery(...))` for Treasury fiscal exchange rate data (country, currency, record\_date filters)
 - StooqProvider is a backward-compatible wrapper that maps legacy Stooq symbols to Yahoo Finance symbols and delegates to YahooPriceProvider internally
 - When reporting dollar amounts, use `USD` instead of `$` to avoid markdown renderers interpreting `$...$` as LaTeX
+

@@ -1,8 +1,8 @@
 **English** | [中文](README.md)
 
-# Digital Oracle 📈
+# Heartbeat Perception 📈
 
-Digital Oracle is an open-source Skill that lets AI Agents mine macro-event trends from massive financial data.
+Heartbeat Perception is an open-source Skill that lets AI Agents mine macro-event trends from massive financial data.
 
 Works with OpenClaw / Claude Code / Cursor / Codex.
 
@@ -14,11 +14,11 @@ Price is absolutely rational — when someone puts real money on an outcome, the
 
 This is the core insight of the Efficient Market Hypothesis: **all public information is already priced in. Everything is in the chart.**
 
-Digital Oracle turns this insight into an executable tool. It plugs into 14 authoritative financial data sources — **from prediction markets like Polymarket and Kalshi, to US Treasury yield curves, CFTC institutional positioning, SEC insider trades, central bank rates, crypto derivatives, CNN Fear & Greed market sentiment, and CME FedWatch rate probabilities.**
+Heartbeat Perception turns this insight into an executable tool. It plugs into 14 authoritative financial data sources — **from prediction markets like Polymarket and Kalshi, to US Treasury yield curves, CFTC institutional positioning, SEC insider trades, central bank rates, crypto derivatives, CNN Fear & Greed market sentiment, and CME FedWatch rate probabilities.**
 
 It doesn't read newspapers, news articles, short videos, or podcasts. It answers questions about housing prices, gold trends, Bitcoin cycles, and military conflict probabilities purely through price signals mined from financial data — delivering structured probability estimates with full reasoning chains.
 
-In a sense, it's a digital oracle for the new era.
+In a sense, it's a Heartbeat Perception for the new era.
 
 ## What can it answer?
 
@@ -29,7 +29,7 @@ In a sense, it's a digital oracle for the new era.
 - "Has Bitcoin bottomed?"
 - "Is NVDA options premium overpriced?"
 
-If there's a market pricing an outcome, Digital Oracle can give you a probability estimate backed by trading data.
+If there's a market pricing an outcome, Heartbeat Perception can give you a probability estimate backed by trading data.
 
 ## Data Sources
 
@@ -57,14 +57,14 @@ All APIs are free and require no API keys.
 ### OpenClaw
 
 ```bash
-clawhub install digital-oracle
+clawhub install Heartbeat Perception
 ```
 
 ### Other AI Agents (Claude Code / Cursor / Codex / ...)
 
 Just tell your agent:
 
-> Install this open-source project and read SKILL.md as your working instructions: https://github.com/komako-workshop/digital-oracle
+> Install this open-source project and read SKILL.md as your working instructions: https://github.com/YOUZ27/Heartbeat-Perception
 
 The agent will clone the repo, read the methodology, and call the providers on its own.
 
@@ -88,7 +88,7 @@ uv pip install yfinance
 ## Project Structure
 
 ```
-digital-oracle/
+Heartbeat Perception/
 ├── SKILL.md                # Skill definition (read by OpenClaw)
 ├── digital_oracle/         # Python source code
 │   ├── concurrent.py       # Parallel execution utilities
