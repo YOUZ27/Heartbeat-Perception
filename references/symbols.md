@@ -2,6 +2,8 @@
 
 通过 YahooPriceProvider 验证可用的符号。使用 `get_history(PriceHistoryQuery(symbol=..., interval='d'|'w'|'m', limit=N))` 拉取。
 
+> **兼容性提示：** StooqProvider 是向后兼容的包装器，自动将传统 Stooq 符号（如 `xauusd`、`eurusd`、`cl.c`）映射到 Yahoo Finance 符号。新代码推荐直接使用 YahooPriceProvider 和 Yahoo Finance 格式的符号。
+
 ## 贵金属
 
 | 符号 | 标的 | 信号含义 |

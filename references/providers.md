@@ -9,7 +9,7 @@ from digital_oracle import (
     YahooPriceProvider, PriceHistoryQuery,   # pip install yfinance
     DeribitProvider, DeribitFuturesCurveQuery, DeribitOptionChainQuery,
     USTreasuryProvider, YieldCurveQuery, ExchangeRateQuery,
-    WebSearchProvider,
+    WebSearchProvider, WebSearchQuery, WebPageQuery,
     CftcCotProvider, CftcCotQuery,
     CoinGeckoProvider, CoinGeckoPriceQuery, CoinGeckoMarketQuery,
     EdgarProvider, EdgarInsiderQuery, EdgarSearchQuery,
@@ -18,6 +18,8 @@ from digital_oracle import (
     YFinanceProvider, OptionsChainQuery,      # pip install yfinance
     FearGreedProvider,
     CMEFedWatchProvider,
+    linear_pool, logarithmic_pool,
+    gather,
 )
 ```
 
@@ -30,10 +32,12 @@ p = PolymarketProvider()
 
 # 搜索事件（slug_contains 很模糊，搜到后要按标题关键词二次过滤）
 events = p.list_events(PolymarketEventQuery(
-    slug_contains="russia",    # 模糊搜索
+    slug_contains="russia",    # 模糊搜索（同时用作 tag_slug 服务端标签过滤）
     limit=20,                  # 返回条数
     active=True,               # 仅活跃事件
     closed=False,              # 排除已关闭
+    tag_slug=None,             # 服务端标签过滤（e.g. "bitcoin", "ukraine", "taiwan"）
+    title_contains=None,       # 客户端标题关键词过滤
 ))
 # 返回 list[PolymarketEvent]
 # event.title, event.slug, event.volume, event.markets
@@ -47,6 +51,8 @@ event = p.get_event("russia-x-ukraine-ceasefire-by-march-31-2026")
 book = p.get_order_book(token_id="...")
 # book.best_bid, book.best_ask, book.spread
 ```
+
+**注意：** `slug_contains` 同时作为 `tag_slug` 传给服务端进行标签过滤。如果要精确控制，显式设置 `tag_slug` 并用 `title_contains` 做客户端过滤。
 
 ## KalshiProvider
 
@@ -67,9 +73,10 @@ market = k.get_market("KXFED-27APR-T4.25")
 event = k.get_event("KXFED-27APR")
 # event.markets -> 该事件下所有市场
 
-# Orderbook
+# Orderbook（支持 orderbook_fp 和 orderbook 两种格式，自动处理美分回退）
 book = k.get_order_book("KXFED-27APR-T4.25", depth=10)
-# book.best_yes_ask, book.best_no_ask
+# book.best_yes_bid, book.best_yes_ask, book.best_no_bid, book.best_no_ask
+# book.midpoint, book.yes_spread, book.arbitrage_consistent
 ```
 
 ## YahooPriceProvider
@@ -98,6 +105,8 @@ hist = yahoo.get_history(PriceHistoryQuery(
 - 贵金属: `GC=F`（黄金）, `SI=F`（白银）
 - 欧洲股票: `RHM.DE`, `BA.L`
 
+> **StooqProvider** 是向后兼容的包装器：自动将 `xauusd`、`eurusd` 等 Stooq 传统符号映射到 Yahoo Finance 符号，内部委托给 `YahooPriceProvider`。新代码推荐直接使用 `YahooPriceProvider`。
+
 ## DeribitProvider
 
 加密衍生品。期货 term structure、期权链、orderbook。
@@ -109,7 +118,9 @@ d = DeribitProvider()
 ts = d.get_futures_term_structure(DeribitFuturesCurveQuery(currency="BTC"))
 # ts.points -> list[DeribitFutureTermPoint]
 # point.instrument_name, point.mark_price, point.basis_vs_perpetual, point.annualized_basis_vs_perpetual
+# point.structure_type -> "contango"/"backwardation"/"flat"
 # ts.perpetual() -> 永续合约数据
+# ts.structure_type, ts.contango_points, ts.backwardation_points
 
 # 期权链（隐含波动率 = 市场预期波动范围）
 chain = d.get_option_chain(DeribitOptionChainQuery(
@@ -117,6 +128,7 @@ chain = d.get_option_chain(DeribitOptionChainQuery(
     expiration_label="27MAR26",  # 可选，不填取最近到期
 ))
 # chain.strikes, chain.underlying_price, chain.atm_strike()
+# chain.expiration_label, chain.expiration_timestamp, chain.underlying_index
 
 # Orderbook
 book = d.get_order_book("BTC-PERPETUAL", depth=5)
@@ -143,6 +155,11 @@ snapshots = t.list_yield_curve(YieldCurveQuery(
 snap = t.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="nominal"))
 y10 = snap.yield_for("10Y")  # -> float | None
 spread = snap.spread("10Y", "2Y")  # -> float | None (百分比差)
+snap.is_inverted  # -> bool | None (10Y-2Y < 0)
+snap.inversion_depth_bps  # -> float | None
+snap.steepness_bps  # -> float | None (30Y-2Y)
+snap.short_rate  # -> float | None (最短端利率)
+snap.long_rate  # -> float | None (最远端利率)
 
 # 盈亏平衡通胀 = nominal - real
 nominal = t.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="nominal"))
@@ -150,14 +167,21 @@ real = t.latest_yield_curve(YieldCurveQuery(year=2026, curve_kind="real"))
 breakeven_10y = nominal.yield_for("10Y") - real.yield_for("10Y")
 
 # 汇率
-rates = t.list_exchange_rates(ExchangeRateQuery(country=("China", "Japan")))
+rates = t.list_exchange_rates(ExchangeRateQuery(
+    countries=("China", "Japan"),
+    currencies=(),               # 可选：按货币代码过滤 e.g. ("CNY", "JPY")
+    country_currency_desc=(),    # 可选：按描述过滤
+    record_date_gte="2026-01-01",  # 可选
+    record_date_lte="2026-12-31",  # 可选
+    limit=20,
+))
 # 返回 list[ExchangeRateRecord]
-# record.country, record.currency, record.exchange_rate
+# record.country, record.currency, record.country_currency_desc, record.exchange_rate, record.record_date
 ```
 
 ## WebSearchProvider
 
-网页搜索 + 页面抓取。DuckDuckGo 搜索，零 API key。
+网页搜索 + 页面抓取。DuckDuckGo 搜索，零 API key，内置全局限频（2秒间隔）和 CAPTCHA 检测与退避重试（最多3次）。
 
 ```python
 web = WebSearchProvider()
@@ -170,7 +194,6 @@ result = web.search("VIX index current level")
 # result.text() -> 渲染为可读文本块
 
 # 也可传 WebSearchQuery 控制结果数
-from digital_oracle import WebSearchQuery
 result = web.search(WebSearchQuery(query="US high yield OAS spread", max_results=3))
 
 # 抓取页面正文
@@ -178,7 +201,10 @@ page = web.fetch_page("https://example.com/article")
 # 返回 WebPageContent
 # page.title, page.text, page.truncated
 # 默认截断 8000 字符，可通过 WebPageQuery(url=..., max_chars=16000) 调整
+page = web.fetch_page(WebPageQuery(url="https://example.com/article", max_chars=16000))
 ```
+
+**注意：** DuckDuckGo 搜索通过全局线程锁串行化请求（间隔 >= 2 秒），`gather()` 中并发调用也是安全的。搜索失败（CAPTCHA 或超时）会触发指数退避重试（3s, 6s, 9s）。
 
 ## CftcCotProvider
 
@@ -195,8 +221,13 @@ reports = cftc.list_reports(CftcCotQuery(commodity_name="GOLD", limit=4))
 # report.prod_long, report.prod_short                 (Producer/Merchant)
 # report.swap_long, report.swap_short, report.swap_spread (Swap Dealer)
 # report.open_interest
-# report.mm_net  -> mm_long - mm_short (净投机仓位)
+
+# 计算属性（自动从持仓数据推导）
+# report.mm_net  -> mm_long - mm_short (净投机仓位，正=看多，负=看空)
 # report.prod_net -> prod_long - prod_short (净商业仓位)
+# report.smart_money_direction -> "bullish" | "bearish" | "neutral"
+# report.commercial_hedge_intensity -> (prod_long + prod_short) / open_interest
+# report.speculative_ratio -> |mm_net| / open_interest (投机参与度)
 
 # 不传 commodity_name 则返回所有商品的最新报告
 reports = cftc.list_reports(CftcCotQuery(limit=20))
@@ -206,7 +237,7 @@ reports = cftc.list_reports(CftcCotQuery(limit=20))
 
 ## CoinGeckoProvider
 
-加密货币现货数据。价格、市值、BTC dominance。
+加密货币现货数据。价格、市值、BTC dominance、全球概览、市场排名。
 
 ```python
 cg = CoinGeckoProvider()
@@ -223,22 +254,24 @@ prices = cg.get_prices(CoinGeckoPriceQuery(
 
 # 全球市场概览
 g = cg.get_global()
+# 返回 CoinGeckoGlobal
 # g.total_market_cap_usd, g.btc_dominance_pct, g.eth_dominance_pct
-# g.market_cap_change_24h_pct, g.active_cryptocurrencies
+# g.total_volume_24h_usd, g.market_cap_change_24h_pct, g.active_cryptocurrencies
 
 # 市值排名列表
 markets = cg.list_markets(CoinGeckoMarketQuery(per_page=10, page=1))
 # 返回 list[CoinGeckoMarket]
 # m.coin_id, m.symbol, m.name, m.current_price, m.market_cap
-# m.market_cap_rank, m.total_volume, m.ath, m.atl
+# m.market_cap_rank, m.total_volume, m.price_change_24h_pct
+# m.high_24h, m.low_24h, m.ath, m.atl
 ```
 
 ## EdgarProvider
 
-SEC EDGAR 公告检索 + 内部人交易（Form 4）。
+SEC EDGAR 公告检索 + 内部人交易（Form 4）+ 全文搜索。
 
 ```python
-edgar = EdgarProvider()
+edgar = EdgarProvider(user_email="you@example.com")  # SEC 要求邮箱，否则 403
 
 # 内部人交易（Form 4 减持/增持）
 summary = edgar.get_insider_transactions(EdgarInsiderQuery(ticker="NVDA", limit=20))
@@ -251,13 +284,13 @@ summary = edgar.get_insider_transactions(EdgarInsiderQuery(ticker="NVDA", limit=
 # 全文检索 SEC 公告
 hits = edgar.search_filings(EdgarSearchQuery(
     query="artificial intelligence risk",
-    forms="10-K",            # 可选：限定表格类型
+    forms="10-K",            # 可选：限定表格类型（e.g. "10-K", "10-Q", "8-K"）
     date_start="2025-01-01", # 可选
     date_end="2026-03-01",   # 可选
     limit=10,
 ))
 # 返回 list[EdgarSearchHit]
-# hit.entity_name, hit.file_date, hit.form_type, hit.description
+# hit.entity_name, hit.file_date, hit.form_type, hit.file_number, hit.description
 ```
 
 ## BisProvider
@@ -328,7 +361,7 @@ exps = yf.get_expirations("SPY")
 # 返回 OptionsExpirations
 # exps.ticker, exps.expirations -> tuple[str, ...]
 
-# 获取期权链（自动计算 Greeks）
+# 获取期权链（自动计算 Greeks，纯 stdlib math.erf，无需 scipy）
 chain = yf.get_chain(OptionsChainQuery(
     ticker="SPY",
     expiration="2026-04-17",  # 不填则取最近到期日
@@ -361,6 +394,7 @@ chain.put_call_oi_ratio         # 看跌/看涨持仓量比
 chain.total_volume              # 总成交量
 chain.total_open_interest       # 总持仓量
 chain.max_pain()                # 最大痛点行权价
+chain.iv_skew(delta_target=0.25)  # IV偏斜（OTM put IV - OTM call IV，正=下行恐惧溢价）
 
 # 独立使用 Black-Scholes Greeks
 from digital_oracle import black_scholes_greeks
@@ -374,7 +408,7 @@ g = black_scholes_greeks(S=150, K=145, T=0.1, r=0.045, sigma=0.25, option_type="
 - `implied_move()` = 市场对到期前涨跌幅的共识预期
 - `atm_iv` vs 历史实际波动率 → IV 溢价/折价判断（期权"贵不贵"）
 - `max_pain` = 到期时价格常向此收敛（做市商利益最大化）
-- IV skew：比较同 delta 的 OTM put IV vs OTM call IV → 市场对下跌的恐惧程度
+- `iv_skew(delta_target=0.25)`：比较同 delta 的 OTM put IV vs OTM call IV → 市场对下跌的恐惧程度（正值 = put 比 call 贵 = 市场偏恐慌）
 
 ## FearGreedProvider
 
@@ -413,4 +447,50 @@ meetings = fw.get_probabilities()
 #   p.probability                # 0.0 to 1.0
 ```
 
-**注意：** CME endpoint 可能偶尔不可用。如果失败，可用 Kalshi `KXFED` 系列作为备选获取利率概率。
+**注意：** CME endpoint 可能偶尔不可用。响应解析能处理多种 JSON 格式（list、嵌套 object、snake_case/camelCase）。如果失败，可用 Kalshi `KXFED` 系列作为备选获取利率概率。
+
+## 概率合成工具
+
+```python
+from digital_oracle import linear_pool, logarithmic_pool
+
+# 线性池（加权平均）
+synth = linear_pool([
+    (0.62, 1.0),  # (probability, weight)
+    (0.58, 0.8),
+    (0.55, 0.7),
+])
+# synth.value     -> 合成的概率值
+# synth.confidence -> 0~1 置信度（信号越一致越高）
+# synth.method    -> "linear_pool"
+# synth.source_count -> 3
+
+# 对数池（几何平均赔率比，天然抑制离散信号）
+synth_log = logarithmic_pool([
+    (0.62, 1.0),
+    (0.58, 0.8),
+    (0.55, 0.7),
+])
+# 满足外部性：新增信号不改变已有信号的相对权重
+```
+
+## 信号质量评估
+
+```python
+from digital_oracle import (
+    SignalQuality,
+    PROBABILITY_PHYSICAL,      # 物理概率（真实世界发生概率）
+    PROBABILITY_RISK_NEUTRAL,   # 风险中性概率（从衍生品价格推导）
+    PROBABILITY_NAIVE_MIDPOINT, # 朴素中值（bid/ask 中值，未经调整）
+)
+
+# 评估信号可靠性
+sq = SignalQuality(
+    liquidity_tier="high",       # "high" | "medium" | "low"
+    staleness_hours=2.0,         # 数据滞后小时数
+    update_frequency="daily",    # "realtime" | "daily" | "weekly" | "monthly" | "quarterly" | "annual"
+    probability_measure=PROBABILITY_RISK_NEUTRAL,
+)
+sq.is_fresh     # -> bool (按频率阈值判断是否新鲜)
+sq.is_reliable  # -> bool (高/中流动性 + 新鲜)
+```

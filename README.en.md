@@ -14,7 +14,7 @@ Price is absolutely rational — when someone puts real money on an outcome, the
 
 This is the core insight of the Efficient Market Hypothesis: **all public information is already priced in. Everything is in the chart.**
 
-Digital Oracle turns this insight into an executable tool. It plugs into 12 authoritative financial data sources — **from prediction markets like Polymarket and Kalshi, to US Treasury yield curves, CFTC institutional positioning, SEC insider trades, central bank rates, and crypto derivatives.**
+Digital Oracle turns this insight into an executable tool. It plugs into 14 authoritative financial data sources — **from prediction markets like Polymarket and Kalshi, to US Treasury yield curves, CFTC institutional positioning, SEC insider trades, central bank rates, crypto derivatives, CNN Fear & Greed market sentiment, and CME FedWatch rate probabilities.**
 
 It doesn't read newspapers, news articles, short videos, or podcasts. It answers questions about housing prices, gold trends, Bitcoin cycles, and military conflict probabilities purely through price signals mined from financial data — delivering structured probability estimates with full reasoning chains.
 
@@ -37,16 +37,18 @@ If there's a market pricing an outcome, Digital Oracle can give you a probabilit
 |----------|-----------|---------|
 | Polymarket | Prediction market contracts | Event probability pricing |
 | Kalshi | SEC-regulated binary contracts | US political/economic events |
-| Stooq | Stocks/ETFs/FX/Commodities | Price history and trends |
+| Yahoo Finance | Stocks/ETFs/FX/Commodities | Price history and trends |
 | Deribit | Crypto derivatives | Futures term structure, options IV |
-| US Treasury | Treasury yields | Yield curves, inflation expectations |
+| US Treasury | Treasury yields + exchange rates | Yield curves, inflation expectations, fiscal FX rates |
 | CFTC COT | Futures positioning | Institutional direction (smart money) |
-| CoinGecko | Crypto spot | BTC/ETH price, market cap |
-| SEC EDGAR | Insider trades | Form 4 buy/sell signals |
+| CoinGecko | Crypto spot + global overview | BTC/ETH price, market cap, BTC dominance, market rankings |
+| SEC EDGAR | Insider trades + full-text search | Form 4 buy/sell signals, keyword filing search |
 | BIS | Central bank data | Policy rates, credit-to-GDP gaps |
 | World Bank | Development indicators | GDP, population, trade |
-| Yahoo Finance | US options chains | IV, Greeks, put/call ratio |
-| Web Search | Web search | VIX, CDS, and other supplementary data |
+| Yahoo Finance Options | US options chains + Greeks | IV, delta/gamma/theta/vega, put/call ratio, max pain, IV skew |
+| CNN Fear & Greed | Market sentiment | 7 price signals composite → 0-100 fear/greed score |
+| CME FedWatch | Rate probabilities | FOMC rate change implied from Fed Funds futures |
+| Web Search | Web search + page fetch | VIX, CDS supplementary data, arbitrary page text extraction |
 
 All APIs are free and require no API keys.
 
@@ -69,7 +71,7 @@ The agent will clone the repo, read the methodology, and call the providers on i
 ### Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) — Python package manager, used to run skill scripts at runtime
-- 11 out of 12 data sources have zero external dependencies (pure Python stdlib). Options chain analysis requires an extra install:
+- 12 out of 14 data sources have zero external dependencies (pure Python stdlib). Price history and options chain analysis require an extra install:
 
 ```bash
 uv pip install yfinance
@@ -91,18 +93,21 @@ digital-oracle/
 ├── digital_oracle/         # Python source code
 │   ├── concurrent.py       # Parallel execution utilities
 │   ├── http.py             # HTTP client abstraction
+│   ├── combination.py      # Probability combination (linear/logarithmic pool)
+│   ├── signal_quality.py   # Signal quality assessment framework
 │   ├── snapshots.py        # HTTP response recording/replay (for tests)
-│   └── providers/          # 12 data providers
+│   └── providers/          # 14 data providers
 ├── references/             # API reference
 │   ├── providers.md        # Provider API docs
 │   └── symbols.md          # Trading symbol directory
 ├── scripts/                # Demo scripts
-└── tests/                  # Unit tests + fixtures
+├── tests/                  # Unit tests + fixtures
+└── ITERATION_PLAN.md       # Iteration plan
 ```
 
 ## Design Principles
 
-- **Zero dependencies first** — 11/12 providers use only the Python standard library, no `pip install` needed
+- **Zero dependencies first** — 12/14 providers use only the Python standard library, no `pip install` needed
 - **Dependency injection** — all providers accept an optional `http_client` parameter for easy testing
 - **Partial failure tolerance** — one data source going down doesn't break the rest
 - **Snapshot testing** — record real HTTP responses, run tests offline in CI
